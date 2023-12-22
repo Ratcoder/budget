@@ -307,13 +307,13 @@ func (db *SqliteDB) CreateCategory(c Category) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO categories(name, user_id) VALUES(?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO categories(name, user_id, available, budgeted) VALUES(?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(c.Name, c.UserId)
+	_, err = stmt.Exec(c.Name, c.UserId, c.Available, c.Budgeted)
 	if err != nil {
 		return err
 	}
@@ -331,13 +331,12 @@ func (db *SqliteDB) GetCategories(user int) ([]Category, error) {
 	var categories []Category
 
 	for rows.Next() {
-		var id int
-		var name string
-		err := rows.Scan(&id, &name)
+		var c Category
+		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.Available, &c.Budgeted)
 		if err != nil {
 			return nil, err
 		} else {
-			categories = append(categories, Category{Name: name})
+			categories = append(categories, c)
 		}
 	}
 

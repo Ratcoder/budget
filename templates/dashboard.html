@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget App</title>
+    <style>
+        table, td, th {
+            box-sizing: border-box;
+            /* border: 1px solid black; */
+        }
+        td {
+            padding: 5px 20px;
+        }
+        .positive, .negative {
+            text-align: right;
+        }
+        .positive {
+            color: green;
+        }
+        .negative {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Available</th>
+            <th>Budgeted</th>
+        </tr>
+        {{range .Categories}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td {{if (gt .Available 0)}} class="positive" {{else}} class="negative" {{end}}>{{usd .Available}}</td>
+                <td class="positive">{{usd .Budgeted}}</td>
+            </tr>
+        {{end}}
+    </table>
+
+    <form action="/create_category" method="post">
+        <label for="name">Name</label>
+        <input type="text" name="name" id="name">
+        <br>
+        <label for="available">Allocate</label>
+        <input type="text" name="available" id="available">
+        <br>
+        <label for="budgeted">Budget</label>
+        <input type="text" name="budgeted" id="budgeted">
+        <br>
+        <input type="submit" value="Create Category">
+    </form>
+</body>
+</html>

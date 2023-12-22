@@ -17,6 +17,8 @@ func Start(port int, databasee *database.Database) error {
 	mux.HandleFunc("/login.html", login)
 	mux.HandleFunc("/register.html", register)
 	mux.Handle("/transactions.html", authMiddleware(http.HandlerFunc(transactions)))
+	mux.Handle("/dashboard.html", authMiddleware(http.HandlerFunc(dashboard)))
+	mux.Handle("/create_category", authMiddleware(http.HandlerFunc(create_category)))
 
 	mux.Handle("/api/get_link_token", authMiddleware(http.HandlerFunc(get_link_token)))
 	mux.Handle("/api/set_public_token", authMiddleware(http.HandlerFunc(set_public_token)))

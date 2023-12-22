@@ -26,7 +26,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			// HttpOnly: true,
 			// SameSite: http.SameSiteStrictMode,
 		})
-		http.Redirect(w, r, "/transactions.html", http.StatusSeeOther)
+		http.Redirect(w, r, "/dashboard.html", http.StatusSeeOther)
 		return
 	}
 	view.Template.ExecuteTemplate(w, "login.html", "")
