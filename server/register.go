@@ -1,10 +1,10 @@
 package server
 
 import (
-	"net/http"
-	"budget/view"
 	"budget/database"
+	"budget/view"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
 )
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +42,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		http.Redirect(w, r, "/login.html", http.StatusSeeOther)
 		return
 	}

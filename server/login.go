@@ -1,8 +1,8 @@
 package server
 
 import (
-	"net/http"
 	"budget/view"
+	"net/http"
 )
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -17,11 +17,11 @@ func login(w http.ResponseWriter, r *http.Request) {
 			view.Template.ExecuteTemplate(w, "login.html", "Username or password incorrect")
 			return
 		}
-		
+
 		http.SetCookie(w, &http.Cookie{
-			Name:     "session",
-			Value:    sessionString,
-			Path:     "/",
+			Name:  "session",
+			Value: sessionString,
+			Path:  "/",
 			// Secure:   false,
 			// HttpOnly: true,
 			// SameSite: http.SameSiteStrictMode,

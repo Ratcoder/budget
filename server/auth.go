@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"net/http"
 	"crypto/rand"
 	"encoding/base64"
-	"golang.org/x/crypto/bcrypt"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
+	"net/http"
 )
 
 type Session struct {

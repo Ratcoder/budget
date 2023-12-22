@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"budget/server"
 	"budget/database"
 	plaid "budget/plaid_connection"
+	"budget/server"
 
 	"github.com/joho/godotenv"
 )

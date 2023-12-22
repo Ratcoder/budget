@@ -180,12 +180,12 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 	}
 	for _, transaction := range responce.Added {
 		t := database.Transaction{
-			Date:        transaction.Date,
-			Amount:      int(transaction.Amount * -100),
-			Account:     transaction.AccountID,
-			Description: transaction.Name,
-			UserId:      userId,
-			PlaidCategory:    transaction.Category.Primary,
+			Date:          transaction.Date,
+			Amount:        int(transaction.Amount * -100),
+			Account:       transaction.AccountID,
+			Description:   transaction.Name,
+			UserId:        userId,
+			PlaidCategory: transaction.Category.Primary,
 		}
 		err := (*db).CreateTransaction(t)
 		if err != nil {

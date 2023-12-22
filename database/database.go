@@ -34,12 +34,12 @@ type Database interface {
 }
 
 type Transaction struct {
-	Id          int
-	Date        string
-	Description string
-	Amount      int
-	Account     string
-	UserId      int
+	Id            int
+	Date          string
+	Description   string
+	Amount        int
+	Account       string
+	UserId        int
 	PlaidCategory string
 	CategoryId    int
 }

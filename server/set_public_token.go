@@ -1,9 +1,9 @@
 package server
 
 import (
+	plaid "budget/plaid_connection"
 	"io"
 	"net/http"
-	plaid "budget/plaid_connection"
 )
 
 func set_public_token(w http.ResponseWriter, r *http.Request) {

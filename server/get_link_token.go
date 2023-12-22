@@ -1,8 +1,8 @@
 package server
 
 import (
-	"net/http"
 	plaid "budget/plaid_connection"
+	"net/http"
 )
 
 func get_link_token(w http.ResponseWriter, r *http.Request) {

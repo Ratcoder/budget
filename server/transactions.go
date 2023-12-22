@@ -1,9 +1,9 @@
 package server
 
 import (
-	"net/http"
-	"budget/view"
 	"budget/database"
+	"budget/view"
+	"net/http"
 )
 
 func transactions(w http.ResponseWriter, r *http.Request) {

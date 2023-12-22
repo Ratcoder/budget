@@ -11,9 +11,9 @@ func init() {
 	funcMap := template.FuncMap{
 		"usd": func(amount int) string {
 			if amount < 0 {
-				return "-$" + strconv.Itoa(-amount / 100)
+				return "-$" + strconv.Itoa(-amount/100)
 			}
-			return "$" + strconv.Itoa(amount / 100)
+			return "$" + strconv.Itoa(amount/100)
 		},
 	}
 
