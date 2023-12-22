@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget App</title>
+    <style>
+        table, td, th {
+            box-sizing: border-box;
+            /* border: 1px solid black; */
+        }
+        td {
+            padding: 5px 20px;
+        }
+        .positive, .negative {
+            text-align: right;
+        }
+        .positive {
+            color: green;
+        }
+        .negative {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+        </tr>
+        {{range .Transactions}}
+            <tr>
+                <td {{if (gt .Amount 0)}} class="positive" {{else}} class="negative" {{end}}>{{usd .Amount}}</td>
+                <td>{{.Date}}</td>
+                <td>{{.Description}}</td>
+                <td>{{.PlaidCategory}}</td>
+            </tr>
+        {{end}}
+    </table>
+</body>
+</html>
