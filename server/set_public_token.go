@@ -22,6 +22,10 @@ func set_public_token(w http.ResponseWriter, r *http.Request) {
 
 	// Exchange public token for access token
 	accessToken, err := plaid.ExchangePublicToken(publicToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// Store access token in database
 	userId := r.Context().Value("user").(int)
