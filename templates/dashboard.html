@@ -5,12 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget App</title>
     <style>
+        table {
+            border-collapse: collapse;
+        }
         table, td, th {
             box-sizing: border-box;
             /* border: 1px solid black; */
         }
         td {
             padding: 5px 20px;
+        }
+        tr:last-child {
+            border-top: 1px solid black;
         }
         .positive, .negative {
             text-align: right;
@@ -24,7 +30,7 @@
     </style>
 </head>
 <body>
-    <table>
+    <table cellspacing="0">
         <tr>
             <th>Name</th>
             <th>Available</th>
@@ -37,6 +43,11 @@
                 <td class="positive">{{usd .Budgeted}}</td>
             </tr>
         {{end}}
+        <tr>
+            <td>Total</td>
+            <td {{if (gt .TotalAvailable 0)}} class="positive" {{else}} class="negative" {{end}}>{{usd .TotalAvailable}}</td>
+            <td class="positive">{{usd .TotalBudgeted}}</td>
+        </tr>
     </table>
 
     <form action="/create_category" method="post">
