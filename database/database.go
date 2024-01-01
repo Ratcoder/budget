@@ -84,6 +84,9 @@ func CreateSqliteDB() *SqliteDB {
 func (db *SqliteDB) Init() error {
 	var err error
 	db.driver, err = sql.Open("sqlite3", "./db")
+	if err != nil {
+		return err
+	}
 
 	sqlStmt := `
 	CREATE TABLE IF NOT EXISTS transactions (
