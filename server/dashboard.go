@@ -27,15 +27,15 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Categories []database.Category
+		Categories     []database.Category
 		TotalAvailable int
-		TotalBudgeted int
-		Transactions []database.Transaction
+		TotalBudgeted  int
+		Transactions   []database.Transaction
 	}{
-		Categories: categories,
+		Categories:     categories,
 		TotalAvailable: totalAvailable,
-		TotalBudgeted: totalBudgeted,
-		Transactions: transactions,
+		TotalBudgeted:  totalBudgeted,
+		Transactions:   transactions,
 	}
 	view.Template.ExecuteTemplate(w, "dashboard.html", data)
 }

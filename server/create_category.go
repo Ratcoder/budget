@@ -25,10 +25,10 @@ func create_category(w http.ResponseWriter, r *http.Request) {
 		userId := r.Context().Value("user").(int)
 
 		category := database.Category{
-			Name:   name,
+			Name:      name,
 			Available: available,
-			Budgeted: budget,
-			UserId: userId,
+			Budgeted:  budget,
+			UserId:    userId,
 		}
 		err = (*db).CreateCategory(category)
 		if err != nil {
