@@ -19,6 +19,7 @@ type Database interface {
 	// Transactions
 	CreateTransaction(t Transaction) error
 	GetTransactions(user int) ([]Transaction, error)
+	GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error)
 	UpdateTransaction(id int, t Transaction) error
 	DeleteTransaction(id int) error
 	// Categories
@@ -241,6 +242,28 @@ func (db *SqliteDB) CreateTransaction(t Transaction) error {
 
 func (db *SqliteDB) GetTransactions(user int) ([]Transaction, error) {
 	rows, err := db.driver.Query("SELECT * FROM transactions WHERE user_id = (?);", user)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var transactions []Transaction
+
+	for rows.Next() {
+		var t Transaction
+		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId)
+		if err != nil {
+			return nil, err
+		} else {
+			transactions = append(transactions, t)
+		}
+	}
+
+	return transactions, nil
+}
+
+func (db *SqliteDB) GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error) {
+	rows, err := db.driver.Query("SELECT * FROM transactions WHERE user_id = (?) AND date >= (?) AND date <= (?);", user, start, end)
 	if err != nil {
 		return nil, err
 	}

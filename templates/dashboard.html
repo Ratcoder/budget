@@ -30,7 +30,22 @@
     </style>
 </head>
 <body>
-    <table cellspacing="0">
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+        </tr>
+        {{range .Transactions}}
+            <tr draggable="true">
+                <td>{{.Date}}</td>
+                <td>{{.Description}}</td>
+                <td {{if (gt .Amount 0)}} class="positive" {{else}} class="negative" {{end}}>{{usd .Amount}}</td>
+            </tr>
+        {{end}}
+    </table>
+
+    <table>
         <tr>
             <th>Name</th>
             <th>Available</th>
