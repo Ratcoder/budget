@@ -32,6 +32,12 @@ type Database interface {
 	GetBudgets(user int) ([]Budget, error)
 	UpdateBudget(id int, b Budget) error
 	DeleteBudget(id int) error
+	// Accounts
+	CreateAccount(a Account) error
+	GetAccounts(user int) ([]Account, error)
+	GetAccountByPlaidId(user int, plaidId string) (Account, error)
+	UpdateAccount(id int, a Account) error
+	DeleteAccount(id int) error
 }
 
 type Transaction struct {
@@ -59,6 +65,14 @@ type User struct {
 	PlaidItem               string
 	PlaidTransactionsCursor string
 	Password                string
+}
+
+type Account struct {
+	Id             int
+	UserId         int
+	Name           string
+	Balance        int
+	PlaidAccountId string
 }
 
 type Budget struct {
@@ -127,6 +141,14 @@ func (db *SqliteDB) Init() error {
 		year_month TEXT,
 		items TEXT,
 		FOREIGN KEY(user_id) REFERENCES users(id)
+	);
+
+	CREATE TABLE IF NOT EXISTS accounts (
+		id INTEGER PRIMARY KEY,
+		user_id INT NOT NULL,
+		name TEXT,
+		balance INT,
+		plaid_account_id TEXT
 	);
 	-- PRAGMA foreign_keys = ON;
 	`
@@ -510,6 +532,98 @@ func (db *SqliteDB) DeleteBudget(id int) error {
 	}
 
 	stmt, err := tx.Prepare("DELETE FROM budgets WHERE id = (?);")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (db *SqliteDB) CreateAccount(a Account) error {
+	tx, err := db.driver.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO accounts(user_id, name, balance, plaid_account_id) VALUES(?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(a.UserId, a.Name, a.Balance, a.PlaidAccountId)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (db *SqliteDB) GetAccounts(user int) ([]Account, error) {
+	rows, err := db.driver.Query("SELECT * FROM accounts WHERE user_id = (?);", user)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []Account
+
+	for rows.Next() {
+		var a Account
+		err := rows.Scan(&a.Id, &a.UserId, &a.Name, &a.Balance, &a.PlaidAccountId)
+		if err != nil {
+			return nil, err
+		} else {
+			accounts = append(accounts, a)
+		}
+	}
+
+	return accounts, nil
+}
+
+func (db *SqliteDB) GetAccountByPlaidId(user int, plaidId string) (Account, error) {
+	var a Account
+	err := db.driver.QueryRow("SELECT * FROM accounts WHERE user_id = (?) AND plaid_account_id = (?);", user, plaidId).Scan(&a.Id, &a.UserId, &a.Name, &a.Balance, &a.PlaidAccountId)
+	if err != nil {
+		return a, err
+	}
+
+	return a, nil
+}
+
+func (db *SqliteDB) UpdateAccount(id int, a Account) error {
+	tx, err := db.driver.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("UPDATE accounts SET name = (?), balance = (?), plaid_account_id = (?) WHERE id = (?);")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(a.Name, a.Balance, a.PlaidAccountId, id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (db *SqliteDB) DeleteAccount(id int) error {
+	tx, err := db.driver.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("DELETE FROM accounts WHERE id = (?);")
 	if err != nil {
 		return err
 	}
