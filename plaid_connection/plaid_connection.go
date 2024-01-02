@@ -205,3 +205,80 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 
 	return "", nil
 }
+
+func SyncAccounts(userId int, db *database.Database) error {
+	loadEnv()
+
+	// Load user from database
+	user, err := (*db).GetUserById(userId)
+	if err != nil {
+		return err
+	}
+
+	// Prepare request
+	req := struct {
+		ClientID    string `json:"client_id"`
+		Secret      string `json:"secret"`
+		AccessToken string `json:"access_token"`
+	}{
+		ClientID:    PLAID_CLIENT_ID,
+		Secret:      PLAID_SECRET,
+		AccessToken: user.PlaidItem,
+	}
+
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	reqReader := bytes.NewReader([]byte(reqBytes))
+
+	// Send request
+	resp, err := http.Post("https://sandbox.plaid.com/accounts/balance/get", "application/json", reqReader)
+	if err != nil {
+		return err
+	}
+
+	// Parse response
+	type Account struct {
+		AccountID string `json:"account_id"`
+		Name      string `json:"name"`
+		Balances  struct {
+			Available float64 `json:"available"`
+		} `json:"balances"`
+		Type string `json:"type"`
+	}
+	responce := struct {
+		Accounts []Account `json:"accounts"`
+	}{}
+
+	err = json.NewDecoder(resp.Body).Decode(&responce)
+	if err != nil {
+		return err
+	}
+
+	for _, account := range responce.Accounts {
+		if account.Type != "depository" {
+			continue
+		}
+
+		// Check if account already exists
+		a, err := (*db).GetAccountByPlaidId(user.Id, account.AccountID)
+		if err != nil {
+			// Create account
+			a = database.Account{
+				UserId: user.Id,
+				Name:   account.Name,
+				Balance: int(account.Balances.Available * 100),
+				PlaidAccountId:  account.AccountID,
+			}
+			err = (*db).CreateAccount(a)
+			continue
+		}
+
+		// Update account
+		a.Name = account.Name
+		a.Balance = int(account.Balances.Available * 100)
+		err = (*db).UpdateAccount(a.Id, a)
+	}
+	return nil
+}
