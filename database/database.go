@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"encoding/json"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -27,11 +26,6 @@ type Database interface {
 	GetCategories(user int) ([]Category, error)
 	UpdateCategory(id int, name string) error
 	DeleteCategory(id int) error
-	// Budgets
-	CreateBudget(b Budget) error
-	GetBudgets(user int) ([]Budget, error)
-	UpdateBudget(id int, b Budget) error
-	DeleteBudget(id int) error
 	// Accounts
 	CreateAccount(a Account) error
 	GetAccounts(user int) ([]Account, error)
@@ -73,18 +67,6 @@ type Account struct {
 	Name           string
 	Balance        int
 	PlaidAccountId string
-}
-
-type Budget struct {
-	Id        int
-	UserId    int
-	YearMonth string
-	Items     []BudgetItem
-}
-
-type BudgetItem struct {
-	CategoryId int
-	Amount     int
 }
 
 type SqliteDB struct {
@@ -134,14 +116,6 @@ func (db *SqliteDB) Init() error {
 		plaid_transactions_cursor TEXT
 	);
 	-- DELETE FROM users;
-
-	CREATE TABLE IF NOT EXISTS budgets (
-		id INTEGER PRIMARY KEY,
-		user_id INT NOT NULL,
-		year_month TEXT,
-		items TEXT,
-		FOREIGN KEY(user_id) REFERENCES users(id)
-	);
 
 	CREATE TABLE IF NOT EXISTS accounts (
 		id INTEGER PRIMARY KEY,
@@ -418,120 +392,6 @@ func (db *SqliteDB) DeleteCategory(id int) error {
 	}
 
 	stmt, err := tx.Prepare("DELETE FROM categories WHERE id = (?);")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(id)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
-func serializeBudgetItems(items []BudgetItem) (string, error) {
-	b, err := json.Marshal(items)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-func deserializeBudgetItems(items string) ([]BudgetItem, error) {
-	var budgetItems []BudgetItem
-	err := json.Unmarshal([]byte(items), &budgetItems)
-	if err != nil {
-		return nil, err
-	}
-	return budgetItems, nil
-}
-
-func (db *SqliteDB) CreateBudget(b Budget) error {
-	tx, err := db.driver.Begin()
-	if err != nil {
-		return err
-	}
-
-	items, err := serializeBudgetItems(b.Items)
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare("INSERT INTO budgets(user_id, year_month, items) VALUES(?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(b.UserId, b.YearMonth, items)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
-func (db *SqliteDB) GetBudgets(user int) ([]Budget, error) {
-	rows, err := db.driver.Query("SELECT * FROM budgets WHERE user_id = (?);", user)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var budgets []Budget
-
-	for rows.Next() {
-		var b Budget
-		var items string
-		err := rows.Scan(&b.Id, &b.UserId, &b.YearMonth, &items)
-		if err != nil {
-			return nil, err
-		} else {
-			b.Items, err = deserializeBudgetItems(items)
-			if err != nil {
-				return nil, err
-			}
-			budgets = append(budgets, b)
-		}
-	}
-
-	return budgets, nil
-}
-
-func (db *SqliteDB) UpdateBudget(id int, b Budget) error {
-	tx, err := db.driver.Begin()
-	if err != nil {
-		return err
-	}
-
-	items, err := serializeBudgetItems(b.Items)
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare("UPDATE budgets SET year_month = (?), items = (?) WHERE id = (?);")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(b.YearMonth, items, id)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
-func (db *SqliteDB) DeleteBudget(id int) error {
-	tx, err := db.driver.Begin()
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare("DELETE FROM budgets WHERE id = (?);")
 	if err != nil {
 		return err
 	}
