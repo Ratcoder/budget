@@ -13,7 +13,7 @@ import (
 
 	"budget/database"
 	plaid "budget/plaid_connection"
-	"budget/server"
+	"budget/api"
 
 	"github.com/joho/godotenv"
 )
@@ -53,7 +53,7 @@ func main() {
 		log.Fatal("Error parsing PORT env variable:", err)
 	}
 	fmt.Println("Running at port", PORT)
-	log.Fatal(server.Start(PORT, &db))
+	log.Fatal(api.Start(PORT, &db))
 }
 
 func transactionsFromCSV(r io.Reader) ([]database.Transaction, error) {
