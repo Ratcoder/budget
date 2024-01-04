@@ -7,6 +7,15 @@ import (
 	"io"
 )
 
+type Transaction struct {
+	Id            int    `json:"id"`
+	Date          string `json:"date"`
+	Description   string `json:"description"`
+	Amount        int    `json:"amount"`
+	Account       string `json:"account"`
+	CategoryId    int    `json:"category_id"`
+}
+
 func transactions(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
 	switch r.Method {
@@ -18,8 +27,22 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Convert to api transactions
+		var apiTransactions []Transaction = make([]Transaction, len(transactions))
+		for i, transaction := range transactions {
+			apiTransaction := Transaction{
+				Id:            transaction.Id,
+				Date:          transaction.Date,
+				Description:   transaction.Description,
+				Amount:        transaction.Amount,
+				Account:       transaction.Account,
+				CategoryId:    transaction.CategoryId,
+			}
+			apiTransactions[i] = apiTransaction
+		}
+
 		// Convert to JSON
-		jsonTransactions, err := json.Marshal(transactions)
+		jsonTransactions, err := json.Marshal(apiTransactions)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
