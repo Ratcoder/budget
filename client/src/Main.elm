@@ -7,7 +7,6 @@ import Html.Events exposing (..)
 import Http exposing (..)
 import Json.Decode
 import Json.Encode
-import Url exposing (Url)
 
 
 main =
