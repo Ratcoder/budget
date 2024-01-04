@@ -9,6 +9,7 @@ import Json.Decode
 import Json.Encode
 
 
+main : Program String Model Msg
 main =
     Browser.document
         { init = init
