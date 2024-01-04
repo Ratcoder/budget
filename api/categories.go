@@ -3,16 +3,22 @@ package api
 import (
 	"net/http"
 	"encoding/json"
+	"budget/database"
 )
 
 type Category struct {
-	Id            int    `json:"id"`
+	Id            int    `json:"id,omitempty"`
 	Name          string `json:"name"`
 	Available     int    `json:"available"`
 	Budgeted      int    `json:"budgeted"`
 }
 
 func categories(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		createCategory(w, r)
+		return
+	}
+
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -43,4 +49,27 @@ func categories(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonCategories)
+}
+
+func createCategory(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value("user").(int)
+	var apiCategory Category
+	err := json.NewDecoder(r.Body).Decode(&apiCategory)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	category := database.Category{
+		Name:          apiCategory.Name,
+		Available:     apiCategory.Available,
+		Budgeted:      apiCategory.Budgeted,
+		UserId:        userId,
+	}
+
+	err = (*db).CreateCategory(category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
