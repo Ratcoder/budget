@@ -85,6 +85,8 @@ type Msg
     | GetTransactionsResponse (Result Http.Error (List Transaction))
     | GetCategories
     | GetCategoriesResponse (Result Http.Error (List Category))
+    | GetAccounts
+    | GetAccountsResponse (Result Http.Error (List Account))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -145,6 +147,19 @@ update msg model =
             , Cmd.none
             )
 
+        ( GetAccounts, User _ ) ->
+            ( model
+            , Http.get
+                { url = "/api/accounts"
+                , expect = Http.expectJson GetAccountsResponse (Json.Decode.list accountDecoder)
+                }
+            )
+
+        ( GetAccountsResponse (Ok accounts), User user ) ->
+            ( User { user | accounts = accounts }
+            , Cmd.none
+            )
+
         _ ->
             ( model, Cmd.none )
 
@@ -186,6 +201,8 @@ view model =
                 , ul [] (List.map (\t -> li [] [ text t.description ]) user.transactions)
                 , button [ onClick GetCategories ] [ text "Get Categories" ]
                 , ul [] (List.map (\c -> li [] [ text c.name ]) user.categories)
+                , button [ onClick GetAccounts ] [ text "Get Accounts" ]
+                , ul [] (List.map (\a -> li [] [ text a.name ]) user.accounts)
                 ]
             }
 
@@ -207,3 +224,11 @@ categoryDecoder =
         (Json.Decode.field "name" Json.Decode.string)
         (Json.Decode.field "available" Json.Decode.int)
         (Json.Decode.field "budgeted" Json.Decode.int)
+
+
+accountDecoder : Json.Decode.Decoder Account
+accountDecoder =
+    Json.Decode.map3 Account
+        (Json.Decode.field "id" Json.Decode.int)
+        (Json.Decode.field "name" Json.Decode.string)
+        (Json.Decode.field "balance" Json.Decode.int)
