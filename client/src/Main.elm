@@ -83,6 +83,8 @@ type Msg
     | LoginResponse (Result Http.Error String)
     | GetTransactions
     | GetTransactionsResponse (Result Http.Error (List Transaction))
+    | GetCategories
+    | GetCategoriesResponse (Result Http.Error (List Category))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -130,6 +132,19 @@ update msg model =
             , Cmd.none
             )
 
+        ( GetCategories, User _ ) ->
+            ( model
+            , Http.get
+                { url = "/api/categories"
+                , expect = Http.expectJson GetCategoriesResponse (Json.Decode.list categoryDecoder)
+                }
+            )
+
+        ( GetCategoriesResponse (Ok categories), User user ) ->
+            ( User { user | categories = categories }
+            , Cmd.none
+            )
+
         _ ->
             ( model, Cmd.none )
 
@@ -169,6 +184,8 @@ view model =
                 [ h2 [] [ text "Dashboard" ]
                 , button [ onClick GetTransactions ] [ text "Get Transactions" ]
                 , ul [] (List.map (\t -> li [] [ text t.description ]) user.transactions)
+                , button [ onClick GetCategories ] [ text "Get Categories" ]
+                , ul [] (List.map (\c -> li [] [ text c.name ]) user.categories)
                 ]
             }
 
@@ -181,3 +198,12 @@ transactionDecoder =
         (Json.Decode.field "description" Json.Decode.string)
         (Json.Decode.field "date" Json.Decode.string)
         (Json.Decode.field "category_id" Json.Decode.int)
+
+
+categoryDecoder : Json.Decode.Decoder Category
+categoryDecoder =
+    Json.Decode.map4 Category
+        (Json.Decode.field "id" Json.Decode.int)
+        (Json.Decode.field "name" Json.Decode.string)
+        (Json.Decode.field "available" Json.Decode.int)
+        (Json.Decode.field "budgeted" Json.Decode.int)
