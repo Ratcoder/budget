@@ -8,6 +8,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http exposing (..)
 import Json.Encode
+import Json.Decode
 
 
 main =
@@ -77,6 +78,8 @@ type Msg
     | ChangePassword String
     | LoginSubmit
     | LoginResponse (Result Http.Error String)
+    | GetTransactions
+    | GetTransactionsResponse (Result Http.Error (List Transaction))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -108,6 +111,19 @@ update msg model =
                 , accounts = []
                 , categories = []
                 }
+            , Cmd.none
+            )
+        
+        ( GetTransactions, User _ ) ->
+            ( model
+            , Http.get
+                { url = "/api/transactions"
+                , expect = Http.expectJson GetTransactionsResponse (Json.Decode.list transactionDecoder)
+                }
+            )
+        
+        ( GetTransactionsResponse (Ok transactions), User user ) ->
+            ( User { user | transactions = transactions }
             , Cmd.none
             )
 
@@ -142,9 +158,21 @@ view model =
                     ]
                 ]
             }
-        User _ ->
+        User user ->
             { title = "Budget"
             , body =
                 [ h2 [] [ text "Dashboard" ]
+                , button [ onClick GetTransactions ] [ text "Get Transactions" ]
+                , ul [] (List.map (\t -> li [] [ text t.description ]) user.transactions)
                 ]
             }
+
+
+transactionDecoder : Json.Decode.Decoder Transaction
+transactionDecoder =
+    Json.Decode.map5 Transaction
+        (Json.Decode.field "id" Json.Decode.int)
+        (Json.Decode.field "amount" Json.Decode.int)
+        (Json.Decode.field "description" Json.Decode.string)
+        (Json.Decode.field "date" Json.Decode.string)
+        (Json.Decode.field "category_id" Json.Decode.int)
