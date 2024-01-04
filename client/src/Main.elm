@@ -1,14 +1,13 @@
 module Main exposing (..)
 
 import Browser
-import Html
-import Url exposing (Url)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http exposing (..)
-import Json.Encode
 import Json.Decode
+import Json.Encode
+import Url exposing (Url)
 
 
 main =
@@ -45,6 +44,7 @@ type Model
         , categories : List Category
         }
 
+
 type alias Transaction =
     { id : Int
     , amount : Int
@@ -53,11 +53,13 @@ type alias Transaction =
     , categoryId : Int
     }
 
+
 type alias Account =
     { id : Int
     , name : String
     , balance : Int
     }
+
 
 type alias Category =
     { id : Int
@@ -65,6 +67,7 @@ type alias Category =
     , available : Int
     , budgeted : Int
     }
+
 
 type Response success failure
     = Unsent
@@ -104,7 +107,7 @@ update msg model =
                             ]
                 }
             )
-        
+
         ( LoginResponse (Ok _), Stranger _ ) ->
             ( User
                 { transactions = []
@@ -113,7 +116,7 @@ update msg model =
                 }
             , Cmd.none
             )
-        
+
         ( GetTransactions, User _ ) ->
             ( model
             , Http.get
@@ -121,7 +124,7 @@ update msg model =
                 , expect = Http.expectJson GetTransactionsResponse (Json.Decode.list transactionDecoder)
                 }
             )
-        
+
         ( GetTransactionsResponse (Ok transactions), User user ) ->
             ( User { user | transactions = transactions }
             , Cmd.none
@@ -129,6 +132,7 @@ update msg model =
 
         _ ->
             ( model, Cmd.none )
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -158,6 +162,7 @@ view model =
                     ]
                 ]
             }
+
         User user ->
             { title = "Budget"
             , body =
