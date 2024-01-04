@@ -9,7 +9,7 @@ import Json.Decode
 import Json.Encode
 
 
-main : Program String Model Msg
+main : Program () Model Msg
 main =
     Browser.document
         { init = init
@@ -19,8 +19,8 @@ main =
         }
 
 
-init : String -> ( Model, Cmd Msg )
-init s =
+init : () -> ( Model, Cmd Msg )
+init _ =
     ( Stranger
         { usernameField = ""
         , passwordField = ""
