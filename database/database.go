@@ -19,18 +19,18 @@ type Database interface {
 	CreateTransaction(t Transaction) error
 	GetTransactions(user int) ([]Transaction, error)
 	GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error)
-	UpdateTransaction(id int, t Transaction) error
+	UpdateTransaction(userId int, t Transaction) error
 	DeleteTransaction(id int) error
 	// Categories
 	CreateCategory(c Category) error
 	GetCategories(user int) ([]Category, error)
-	UpdateCategory(id int, c Category) error
+	UpdateCategory(userId int, c Category) error
 	DeleteCategory(id int) error
 	// Accounts
 	CreateAccount(a Account) error
 	GetAccounts(user int) ([]Account, error)
 	GetAccountByPlaidId(user int, plaidId string) (Account, error)
-	UpdateAccount(id int, a Account) error
+	UpdateAccount(userId int, a Account) error
 	DeleteAccount(id int) error
 }
 
@@ -283,19 +283,19 @@ func (db *SqliteDB) GetTransactionsDateRange(user int, start string, end string)
 	return transactions, nil
 }
 
-func (db *SqliteDB) UpdateTransaction(id int, t Transaction) error {
+func (db *SqliteDB) UpdateTransaction(userId int, t Transaction) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE transactions SET date = (?), description = (?), amount = (?), category_id = (?) WHERE id = (?);")
+	stmt, err := tx.Prepare("UPDATE transactions SET date = (?), description = (?), amount = (?), category_id = (?) WHERE user_id = (?) AND id = (?);")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.CategoryId, id)
+	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.CategoryId, userId, t.Id)
 	if err != nil {
 		return err
 	}
@@ -365,19 +365,19 @@ func (db *SqliteDB) GetCategories(user int) ([]Category, error) {
 	return categories, nil
 }
 
-func (db *SqliteDB) UpdateCategory(id int, c Category) error {
+func (db *SqliteDB) UpdateCategory(userId int, c Category) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE categories SET name = (?), available = (?), budgeted = (?) WHERE id = (?);")
+	stmt, err := tx.Prepare("UPDATE categories SET name = (?), available = (?), budgeted = (?) WHERE user_id = (?) AND id = (?);")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(c.Name, c.Available, c.Budgeted, id)
+	_, err = stmt.Exec(c.Name, c.Available, c.Budgeted, userId, c.Id)
 	if err != nil {
 		return err
 	}
@@ -457,19 +457,19 @@ func (db *SqliteDB) GetAccountByPlaidId(user int, plaidId string) (Account, erro
 	return a, nil
 }
 
-func (db *SqliteDB) UpdateAccount(id int, a Account) error {
+func (db *SqliteDB) UpdateAccount(userId int, a Account) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE accounts SET name = (?), balance = (?), plaid_account_id = (?) WHERE id = (?);")
+	stmt, err := tx.Prepare("UPDATE accounts SET name = (?), balance = (?), plaid_account_id = (?) WHERE user_id = (?) AND id = (?);")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(a.Name, a.Balance, a.PlaidAccountId, id)
+	_, err = stmt.Exec(a.Name, a.Balance, a.PlaidAccountId, userId, a.Id)
 	if err != nil {
 		return err
 	}

@@ -97,7 +97,7 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 		transaction.UserId = userId
 
 		// Update transaction
-		err = (*db).UpdateTransaction(transaction.Id, transaction)
+		err = (*db).UpdateTransaction(userId, transaction)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

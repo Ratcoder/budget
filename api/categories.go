@@ -92,7 +92,7 @@ func updateCategory(w http.ResponseWriter, r *http.Request) {
 		UserId:        userId,
 	}
 
-	err = (*db).UpdateCategory(category.Id, category)
+	err = (*db).UpdateCategory(userId, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

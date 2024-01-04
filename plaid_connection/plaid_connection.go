@@ -278,7 +278,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 		// Update account
 		a.Name = account.Name
 		a.Balance = int(account.Balances.Available * 100)
-		err = (*db).UpdateAccount(a.Id, a)
+		err = (*db).UpdateAccount(userId, a)
 	}
 	return nil
 }
