@@ -78,6 +78,33 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 
 		// Write response
 		w.WriteHeader(http.StatusCreated)
+	case "PATCH":
+		// Update a transaction
+		// Read body
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+
+		// Convert to Transaction
+		var transaction database.Transaction
+		err = json.Unmarshal(body, &transaction)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		transaction.UserId = userId
+
+		// Update transaction
+		err = (*db).UpdateTransaction(transaction.Id, transaction)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Write response
+		w.WriteHeader(http.StatusNoContent)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
