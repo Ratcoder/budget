@@ -232,3 +232,21 @@ accountDecoder =
         (Json.Decode.field "id" Json.Decode.int)
         (Json.Decode.field "name" Json.Decode.string)
         (Json.Decode.field "balance" Json.Decode.int)
+
+
+patch :
+    { url : String
+    , body : Http.Body
+    , expect : Http.Expect msg
+    }
+    -> Cmd msg
+patch p =
+    Http.request
+        { method = "PATCH"
+        , headers = []
+        , url = p.url
+        , body = p.body
+        , expect = p.expect
+        , timeout = Nothing
+        , tracker = Nothing
+        }
