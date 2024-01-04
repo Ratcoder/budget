@@ -20,6 +20,7 @@ func Start(port int, databasee *database.Database) error {
 	mux.Handle("/", fs)
 	mux.Handle("/api/transactions", authMiddleware(http.HandlerFunc(transactions)))
 	mux.Handle("/api/categories", authMiddleware(http.HandlerFunc(categories)))
+	mux.Handle("/api/accounts", authMiddleware(http.HandlerFunc(accounts)))
 	mux.HandleFunc("/api/register", register)
 	mux.HandleFunc("/api/login", login)
 	mux.Handle("/api/get_link_token", authMiddleware(http.HandlerFunc(get_link_token)))
