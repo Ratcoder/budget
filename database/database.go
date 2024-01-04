@@ -24,7 +24,7 @@ type Database interface {
 	// Categories
 	CreateCategory(c Category) error
 	GetCategories(user int) ([]Category, error)
-	UpdateCategory(id int, name string) error
+	UpdateCategory(id int, c Category) error
 	DeleteCategory(id int) error
 	// Accounts
 	CreateAccount(a Account) error
@@ -365,19 +365,19 @@ func (db *SqliteDB) GetCategories(user int) ([]Category, error) {
 	return categories, nil
 }
 
-func (db *SqliteDB) UpdateCategory(id int, name string) error {
+func (db *SqliteDB) UpdateCategory(id int, c Category) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE categories SET name = (?) WHERE id = (?);")
+	stmt, err := tx.Prepare("UPDATE categories SET name = (?), available = (?), budgeted = (?) WHERE id = (?);")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(name, id)
+	_, err = stmt.Exec(c.Name, c.Available, c.Budgeted, id)
 	if err != nil {
 		return err
 	}

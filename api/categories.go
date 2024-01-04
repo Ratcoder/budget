@@ -17,9 +17,10 @@ func categories(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		createCategory(w, r)
 		return
-	}
-
-	if r.Method != "GET" {
+	} else if r.Method == "PATCH" {
+		updateCategory(w, r)
+		return
+	} else if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -68,6 +69,30 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = (*db).CreateCategory(category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func updateCategory(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value("user").(int)
+	var apiCategory Category
+	err := json.NewDecoder(r.Body).Decode(&apiCategory)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	category := database.Category{
+		Id:            apiCategory.Id,
+		Name:          apiCategory.Name,
+		Available:     apiCategory.Available,
+		Budgeted:      apiCategory.Budgeted,
+		UserId:        userId,
+	}
+
+	err = (*db).UpdateCategory(category.Id, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
