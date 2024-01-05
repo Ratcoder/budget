@@ -247,13 +247,17 @@ view model =
                 , ul [] <|
                     List.map
                         (\c ->
-                            li [ preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )) ]
-                                [ div [ style "display" "flex", style "width" "500px", style "gap" "3ch" ]
-                                    [ div [ style "flex" "1" ] [ text c.name ]
-                                    , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.available ]
-                                    , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.budgeted ]
+                            li [ preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )), style "width" "500px" ]
+                                [ details []
+                                    [ summary []
+                                        [ div [ style "display" "flex", style "gap" "3ch" ]
+                                            [ div [ style "flex" "1" ] [ text c.name ]
+                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.available ]
+                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.budgeted ]
+                                            ]
+                                        ]
+                                    , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
                                     ]
-                                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
                                 ]
                         )
                         user.categories
