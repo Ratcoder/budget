@@ -7,6 +7,7 @@ import Html.Events exposing (..)
 import Http exposing (..)
 import Json.Decode
 import Json.Encode
+import Platform.Cmd as Cmd
 
 
 main : Program () Model Msg
@@ -42,6 +43,7 @@ type Model
         { transactions : List Transaction
         , accounts : List Account
         , categories : List Category
+        , dragedTransaction : Maybe Transaction
         }
 
 
@@ -81,12 +83,15 @@ type Msg
     | ChangePassword String
     | LoginSubmit
     | LoginResponse (Result Http.Error String)
+    | DragEnterTransaction Transaction
+    | DropTransaction Int
     | GetTransactions
     | GetTransactionsResponse (Result Http.Error (List Transaction))
     | GetCategories
     | GetCategoriesResponse (Result Http.Error (List Category))
     | GetAccounts
     | GetAccountsResponse (Result Http.Error (List Account))
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -117,9 +122,45 @@ update msg model =
                 { transactions = []
                 , accounts = []
                 , categories = []
+                , dragedTransaction = Nothing
                 }
             , Cmd.none
             )
+
+        ( DragEnterTransaction transaction, User user ) ->
+            ( User { user | dragedTransaction = Just transaction }, Cmd.none )
+
+        ( DropTransaction categoryId, User user ) ->
+            case user.dragedTransaction of
+                Just transaction ->
+                    ( User
+                        { user
+                            | dragedTransaction = Nothing
+                            , transactions =
+                                List.map
+                                    (\t ->
+                                        if t.id == transaction.id then
+                                            { t | categoryId = categoryId }
+
+                                        else
+                                            t
+                                    )
+                                    user.transactions
+                        }
+                    , patch
+                        { url = "/api/transactions"
+                        , body =
+                            Http.jsonBody <|
+                                encodeTransaction
+                                    { transaction | categoryId = categoryId }
+                        , expect = Http.expectString (\_ -> NoOp)
+                        }
+                    )
+
+                Nothing ->
+                    ( model
+                    , Cmd.none
+                    )
 
         ( GetTransactions, User _ ) ->
             ( model
@@ -198,13 +239,31 @@ view model =
             , body =
                 [ h2 [] [ text "Dashboard" ]
                 , button [ onClick GetTransactions ] [ text "Get Transactions" ]
-                , ul [] (List.map (\t -> li [] [ text t.description ]) user.transactions)
                 , button [ onClick GetCategories ] [ text "Get Categories" ]
-                , ul [] (List.map (\c -> li [] [ text c.name ]) user.categories)
                 , button [ onClick GetAccounts ] [ text "Get Accounts" ]
-                , ul [] (List.map (\a -> li [] [ text a.name ]) user.accounts)
+                , h2 [] [ text "Uncategorized Transactions:" ]
+                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2023-12-01") user.transactions
+                , h2 [] [ text "Categories:" ]
+                , ul [] <|
+                    List.map
+                        (\c ->
+                            li [ preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )) ]
+                                [ div [ style "display" "flex", style "width" "500px", style "gap" "3ch" ]
+                                    [ div [ style "flex" "1" ] [ text c.name ]
+                                    , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.available ]
+                                    , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.budgeted ]
+                                    ]
+                                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
+                                ]
+                        )
+                        user.categories
                 ]
             }
+
+
+viewTransaction : Transaction -> Html Msg
+viewTransaction transaction =
+    div [ draggable "true", on "dragstart" (Json.Decode.succeed (DragEnterTransaction transaction)) ] [ text <| transaction.description ++ " - " ++ String.fromInt transaction.amount ]
 
 
 transactionDecoder : Json.Decode.Decoder Transaction
@@ -215,6 +274,17 @@ transactionDecoder =
         (Json.Decode.field "description" Json.Decode.string)
         (Json.Decode.field "date" Json.Decode.string)
         (Json.Decode.field "category_id" Json.Decode.int)
+
+
+encodeTransaction : Transaction -> Json.Encode.Value
+encodeTransaction transaction =
+    Json.Encode.object
+        [ ( "id", Json.Encode.int transaction.id )
+        , ( "amount", Json.Encode.int transaction.amount )
+        , ( "description", Json.Encode.string transaction.description )
+        , ( "date", Json.Encode.string transaction.date )
+        , ( "category_id", Json.Encode.int transaction.categoryId )
+        ]
 
 
 categoryDecoder : Json.Decode.Decoder Category
