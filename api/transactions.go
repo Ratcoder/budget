@@ -4,7 +4,6 @@ import (
 	"budget/database"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 )
 
