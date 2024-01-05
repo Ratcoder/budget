@@ -96,8 +96,6 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Println(apiTransaction)
-
 		// Convert to database Transaction
 		transaction := database.Transaction{
 			Id:            apiTransaction.Id,
