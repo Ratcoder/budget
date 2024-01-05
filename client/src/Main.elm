@@ -118,14 +118,13 @@ update msg model =
             )
 
         ( LoginResponse (Ok _), Stranger _ ) ->
-            ( User
+            User
                 { transactions = []
                 , accounts = []
                 , categories = []
                 , dragedTransaction = Nothing
                 }
-            , Cmd.none
-            )
+                |> batchUpdate [ GetTransactions, GetCategories, GetAccounts ]
 
         ( DragEnterTransaction transaction, User user ) ->
             ( User { user | dragedTransaction = Just transaction }, Cmd.none )
@@ -203,6 +202,24 @@ update msg model =
 
         _ ->
             ( model, Cmd.none )
+
+
+batchUpdate : List Msg -> Model -> ( Model, Cmd Msg )
+batchUpdate msgs model =
+    let
+        ( finalModel, finalCmd ) =
+            List.foldl
+                (\msg ( accModel, accCmd ) ->
+                    let
+                        ( newModel, newCmd ) =
+                            update msg accModel
+                    in
+                    ( newModel, Cmd.batch [ accCmd, newCmd ] )
+                )
+                ( model, Cmd.none )
+                msgs
+    in
+    ( finalModel, finalCmd )
 
 
 view : Model -> Browser.Document Msg
