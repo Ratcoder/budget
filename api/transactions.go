@@ -1,10 +1,11 @@
 package api
 
 import (
-	"net/http"
 	"budget/database"
 	"encoding/json"
 	"io"
+	"log"
+	"net/http"
 )
 
 type Transaction struct {
@@ -87,14 +88,26 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Convert to Transaction
-		var transaction database.Transaction
-		err = json.Unmarshal(body, &transaction)
+		// Convert to Api Transaction
+		var apiTransaction Transaction
+		err = json.Unmarshal(body, &apiTransaction)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		transaction.UserId = userId
+
+		log.Println(apiTransaction)
+
+		// Convert to database Transaction
+		transaction := database.Transaction{
+			Id:            apiTransaction.Id,
+			Date:          apiTransaction.Date,
+			Description:   apiTransaction.Description,
+			Amount:        apiTransaction.Amount,
+			Account:       apiTransaction.Account,
+			CategoryId:    apiTransaction.CategoryId,
+			UserId:        userId,
+		}
 
 		// Update transaction
 		err = (*db).UpdateTransaction(userId, transaction)
