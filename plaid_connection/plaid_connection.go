@@ -14,6 +14,7 @@ import (
 
 var PLAID_CLIENT_ID string
 var PLAID_SECRET string
+var PLAID_ENV string
 
 func loadEnv() {
 	if PLAID_CLIENT_ID != "" && PLAID_SECRET != "" {
@@ -21,6 +22,7 @@ func loadEnv() {
 	}
 	PLAID_CLIENT_ID = os.Getenv("PLAID_CLIENT_ID")
 	PLAID_SECRET = os.Getenv("PLAID_SECRET")
+	PLAID_ENV = os.Getenv("PLAID_ENV")
 }
 
 func CreateLinkToken(userId int) (linkToken string, err error) {
@@ -56,7 +58,7 @@ func CreateLinkToken(userId int) (linkToken string, err error) {
 	reqReader := bytes.NewReader([]byte(reqBytes))
 
 	// Send request
-	resp, err := http.Post("https://sandbox.plaid.com/link/token/create", "application/json", reqReader)
+	resp, err := http.Post("https://" + PLAID_ENV + ".plaid.com/link/token/create", "application/json", reqReader)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +98,7 @@ func ExchangePublicToken(publicToken string) (accessToken string, err error) {
 	reqReader := bytes.NewReader([]byte(reqBytes))
 
 	// Send request
-	resp, err := http.Post("https://sandbox.plaid.com/item/public_token/exchange", "application/json", reqReader)
+	resp, err := http.Post("https://" + PLAID_ENV + ".plaid.com/item/public_token/exchange", "application/json", reqReader)
 	if err != nil {
 		return "", err
 	}
@@ -144,7 +146,7 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 	reqReader := bytes.NewReader([]byte(reqBytes))
 
 	// Send request
-	resp, err := http.Post("https://sandbox.plaid.com/transactions/sync", "application/json", reqReader)
+	resp, err := http.Post("https://" + PLAID_ENV + ".plaid.com/transactions/sync", "application/json", reqReader)
 	if err != nil {
 		return "", err
 	}
@@ -233,7 +235,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 	reqReader := bytes.NewReader([]byte(reqBytes))
 
 	// Send request
-	resp, err := http.Post("https://sandbox.plaid.com/accounts/balance/get", "application/json", reqReader)
+	resp, err := http.Post("https://" + PLAID_ENV + ".plaid.com/accounts/balance/get", "application/json", reqReader)
 	if err != nil {
 		return err
 	}
