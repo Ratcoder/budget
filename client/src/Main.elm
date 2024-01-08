@@ -44,6 +44,9 @@ type Model
         , accounts : List Account
         , categories : List Category
         , dragedTransaction : Maybe Transaction
+        , categoryNameField : String
+        , categoryAvailableField : String
+        , categoryBudgetedField : String
         }
 
 
@@ -91,6 +94,11 @@ type Msg
     | GetCategoriesResponse (Result Http.Error (List Category))
     | GetAccounts
     | GetAccountsResponse (Result Http.Error (List Account))
+    | ChangeCategoryName String
+    | ChangeCategoryAvailable String
+    | ChangeCategoryBudgeted String
+    | AddCategoryResponse (Result Http.Error String)
+    | AddCategory
     | NoOp
 
 
@@ -123,6 +131,9 @@ update msg model =
                 , accounts = []
                 , categories = []
                 , dragedTransaction = Nothing
+                , categoryNameField = ""
+                , categoryAvailableField = ""
+                , categoryBudgetedField = ""
                 }
                 |> batchUpdate [ GetTransactions, GetCategories, GetAccounts ]
 
@@ -199,6 +210,33 @@ update msg model =
             ( User { user | accounts = accounts }
             , Cmd.none
             )
+        
+        ( ChangeCategoryName name, User user ) ->
+            ( User { user | categoryNameField = name }, Cmd.none )
+        
+        ( ChangeCategoryAvailable available, User user ) ->
+            ( User { user | categoryAvailableField = available }, Cmd.none )
+        
+        ( ChangeCategoryBudgeted budgeted, User user ) ->
+            ( User { user | categoryBudgetedField = budgeted }, Cmd.none )
+        
+        ( AddCategory, User user ) ->
+            ( model
+            , post
+                { url = "/api/categories"
+                , body =
+                    Http.jsonBody <|
+                        Json.Encode.object
+                            [ ( "name", Json.Encode.string user.categoryNameField )
+                            , ( "available", Json.Encode.int (String.toInt user.categoryAvailableField |> Maybe.withDefault 0) )
+                            , ( "budgeted", Json.Encode.int (String.toInt user.categoryBudgetedField |> Maybe.withDefault 0) )
+                            ]
+                , expect = Http.expectString AddCategoryResponse
+                }
+            )
+        
+        ( AddCategoryResponse (Ok _), User _ ) ->
+            update GetCategories model
 
         _ ->
             ( model, Cmd.none )
@@ -278,6 +316,12 @@ view model =
                                 ]
                         )
                         user.categories
+                , div []
+                    [ input [ type_ "text", value user.categoryNameField, onInput ChangeCategoryName ] []
+                    , input [ type_ "number", value user.categoryAvailableField, onInput ChangeCategoryAvailable ] []
+                    , input [ type_ "number", value user.categoryBudgetedField, onInput ChangeCategoryBudgeted ] []
+                    , button [ onClick AddCategory ] [ text "Add Category" ]
+                    ]
                 ]
             }
 
