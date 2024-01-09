@@ -361,7 +361,7 @@ view model =
                 , button [ onClick GetTransactions ] [ text "Get Transactions" ]
                 , button [ onClick GetCategories ] [ text "Get Categories" ]
                 , button [ onClick GetAccounts ] [ text "Get Accounts" ]
-                , h2 [] [ text "Uncategorized Transactions:" ]
+                , h2 [] [ text <| "Uncategorized: " ++ formatDollars (List.foldl (\a sum -> sum + a.balance) 0 user.accounts - List.foldl (\c sum -> sum + c.available) 0 user.categories) ]
                 , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2024-01-01") user.transactions
                 , h2 [] [ text "Categories:" ]
                 , ul [] <|
