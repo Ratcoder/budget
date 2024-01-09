@@ -398,7 +398,16 @@ viewTransaction transaction =
 
 formatDollars : Int -> String
 formatDollars amount =
-    "$" ++ String.fromInt (amount // 100)
+    (if amount >= 0 then
+        ""
+
+     else
+        "-"
+    )
+        ++ "$"
+        ++ String.fromInt (abs amount // 100)
+        ++ "."
+        ++ String.padLeft 2 '0' (String.fromInt <| abs amount - (abs amount // 100) * 100)
 
 
 transactionDecoder : Json.Decode.Decoder Transaction
