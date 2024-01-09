@@ -94,6 +94,7 @@ type Msg
     | GetCategoriesResponse (Result Http.Error (List Category))
     | GetAccounts
     | GetAccountsResponse (Result Http.Error (List Account))
+    | UpdateCategory Int Category
     | ChangeCategoryName String
     | ChangeCategoryAvailable String
     | ChangeCategoryBudgeted String
@@ -143,29 +144,70 @@ update msg model =
         ( DropTransaction categoryId, User user ) ->
             case user.dragedTransaction of
                 Just transaction ->
-                    ( User
-                        { user
-                            | dragedTransaction = Nothing
-                            , transactions =
+                    if transaction.categoryId == categoryId then
+                        ( model
+                        , Cmd.none
+                        )
+
+                    else
+                        let
+                            categories =
                                 List.map
-                                    (\t ->
-                                        if t.id == transaction.id then
-                                            { t | categoryId = categoryId }
+                                    (\c ->
+                                        if c.id == categoryId then
+                                            { c | available = c.available + transaction.amount }
+
+                                        else if c.id == transaction.categoryId then
+                                            { c | available = c.available - transaction.amount }
 
                                         else
-                                            t
+                                            c
                                     )
-                                    user.transactions
-                        }
-                    , patch
-                        { url = "/api/transactions"
-                        , body =
-                            Http.jsonBody <|
-                                encodeTransaction
-                                    { transaction | categoryId = categoryId }
-                        , expect = Http.expectString (\_ -> NoOp)
-                        }
-                    )
+                                    user.categories
+                        in
+                        ( User
+                            { user
+                                | dragedTransaction = Nothing
+                                , transactions =
+                                    List.map
+                                        (\t ->
+                                            if t.id == transaction.id then
+                                                { t | categoryId = categoryId }
+
+                                            else
+                                                t
+                                        )
+                                        user.transactions
+                                , categories = categories
+                            }
+                        , Cmd.batch
+                            (patch
+                                { url = "/api/transactions"
+                                , body =
+                                    Http.jsonBody <|
+                                        encodeTransaction
+                                            { transaction | categoryId = categoryId }
+                                , expect = Http.expectString (\_ -> NoOp)
+                                }
+                                :: List.filterMap
+                                    (\c ->
+                                        if c.id == categoryId || c.id == transaction.categoryId then
+                                            Just
+                                                (patch
+                                                    { url = "/api/categories"
+                                                    , body =
+                                                        Http.jsonBody <|
+                                                            encodeCategory c
+                                                    , expect = Http.expectString (\_ -> NoOp)
+                                                    }
+                                                )
+
+                                        else
+                                            Nothing
+                                    )
+                                    categories
+                            )
+                        )
 
                 Nothing ->
                     ( model
@@ -210,16 +252,16 @@ update msg model =
             ( User { user | accounts = accounts }
             , Cmd.none
             )
-        
+
         ( ChangeCategoryName name, User user ) ->
             ( User { user | categoryNameField = name }, Cmd.none )
-        
+
         ( ChangeCategoryAvailable available, User user ) ->
             ( User { user | categoryAvailableField = available }, Cmd.none )
-        
+
         ( ChangeCategoryBudgeted budgeted, User user ) ->
             ( User { user | categoryBudgetedField = budgeted }, Cmd.none )
-        
+
         ( AddCategory, User user ) ->
             ( model
             , post
@@ -234,9 +276,32 @@ update msg model =
                 , expect = Http.expectString AddCategoryResponse
                 }
             )
-        
+
         ( AddCategoryResponse (Ok _), User _ ) ->
             update GetCategories model
+
+        ( UpdateCategory id category, User user ) ->
+            ( User
+                { user
+                    | categories =
+                        List.map
+                            (\c ->
+                                if c.id == id then
+                                    category
+
+                                else
+                                    c
+                            )
+                            user.categories
+                }
+            , patch
+                { url = "/api/categories"
+                , body =
+                    Http.jsonBody <|
+                        encodeCategory category
+                , expect = Http.expectString (\_ -> NoOp)
+                }
+            )
 
         _ ->
             ( model, Cmd.none )
@@ -297,7 +362,7 @@ view model =
                 , button [ onClick GetCategories ] [ text "Get Categories" ]
                 , button [ onClick GetAccounts ] [ text "Get Accounts" ]
                 , h2 [] [ text "Uncategorized Transactions:" ]
-                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2023-12-01") user.transactions
+                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2024-01-01") user.transactions
                 , h2 [] [ text "Categories:" ]
                 , ul [] <|
                     List.map
@@ -307,8 +372,8 @@ view model =
                                     [ summary []
                                         [ div [ style "display" "flex", style "gap" "3ch" ]
                                             [ div [ style "flex" "1" ] [ text c.name ]
-                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.available ]
-                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| String.fromInt c.budgeted ]
+                                            , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.available / 100)), onInput (\s -> UpdateCategory c.id { c | available = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
+                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.budgeted ]
                                             ]
                                         ]
                                     , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
@@ -328,7 +393,12 @@ view model =
 
 viewTransaction : Transaction -> Html Msg
 viewTransaction transaction =
-    div [ draggable "true", on "dragstart" (Json.Decode.succeed (DragEnterTransaction transaction)) ] [ text <| transaction.description ++ " - " ++ String.fromInt transaction.amount ]
+    div [ draggable "true", on "dragstart" (Json.Decode.succeed (DragEnterTransaction transaction)) ] [ text <| transaction.date ++ " - " ++ transaction.description ++ " - " ++ formatDollars transaction.amount ]
+
+
+formatDollars : Int -> String
+formatDollars amount =
+    "$" ++ String.fromInt (amount // 100)
 
 
 transactionDecoder : Json.Decode.Decoder Transaction
@@ -359,6 +429,16 @@ categoryDecoder =
         (Json.Decode.field "name" Json.Decode.string)
         (Json.Decode.field "available" Json.Decode.int)
         (Json.Decode.field "budgeted" Json.Decode.int)
+
+
+encodeCategory : Category -> Json.Encode.Value
+encodeCategory category =
+    Json.Encode.object
+        [ ( "id", Json.Encode.int category.id )
+        , ( "name", Json.Encode.string category.name )
+        , ( "available", Json.Encode.int category.available )
+        , ( "budgeted", Json.Encode.int category.budgeted )
+        ]
 
 
 accountDecoder : Json.Decode.Decoder Account
