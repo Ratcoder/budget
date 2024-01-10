@@ -188,8 +188,36 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 			Description:   transaction.Name,
 			UserId:        userId,
 			PlaidCategory: transaction.Category.Primary,
+			PlaidId:       transaction.TransactionID,
 		}
 		err := (*db).CreateTransaction(t)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	for _, transaction := range responce.Modified {
+		t, err := (*db).GetTransactionByPlaidId(userId, transaction.TransactionID)
+		if err != nil {
+			continue
+		}
+		t.Date = transaction.Date
+		t.Amount = int(transaction.Amount * -100)
+		t.Account = transaction.AccountID
+		t.Description = transaction.Name
+		t.PlaidCategory = transaction.Category.Primary
+		err = (*db).UpdateTransaction(userId, t)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	for _, transaction := range responce.Removed {
+		t, err := (*db).GetTransactionByPlaidId(userId, transaction.TransactionID)
+		if err != nil {
+			continue
+		}
+		err = (*db).DeleteTransaction(t.Id)
 		if err != nil {
 			return "", err
 		}

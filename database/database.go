@@ -19,6 +19,7 @@ type Database interface {
 	CreateTransaction(t Transaction) error
 	GetTransactions(user int) ([]Transaction, error)
 	GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error)
+	GetTransactionByPlaidId(user int, plaidId string) (Transaction, error)
 	UpdateTransaction(userId int, t Transaction) error
 	DeleteTransaction(id int) error
 	// Categories
@@ -43,6 +44,7 @@ type Transaction struct {
 	UserId        int
 	PlaidCategory string
 	CategoryId    int
+	PlaidId       string
 }
 
 type Category struct {
@@ -94,6 +96,7 @@ func (db *SqliteDB) Init() error {
 		user_id INT NOT NULL,
 		plaid_category TEXT,
 		category_id INT,
+		plaid_id TEXT,
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
 	-- DELETE FROM transactions;
@@ -225,13 +228,13 @@ func (db *SqliteDB) CreateTransaction(t Transaction) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO transactions(date, description, amount, account, user_id, plaid_category, category_id) VALUES(?, ?, ?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO transactions(date, description, amount, account, user_id, plaid_category, category_id, plaid_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.Account, t.UserId, t.PlaidCategory, t.CategoryId)
+	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.Account, t.UserId, t.PlaidCategory, t.CategoryId, t.PlaidId)
 	if err != nil {
 		return err
 	}
@@ -272,7 +275,7 @@ func (db *SqliteDB) GetTransactionsDateRange(user int, start string, end string)
 
 	for rows.Next() {
 		var t Transaction
-		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId)
+		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
 		if err != nil {
 			return nil, err
 		} else {
@@ -281,6 +284,16 @@ func (db *SqliteDB) GetTransactionsDateRange(user int, start string, end string)
 	}
 
 	return transactions, nil
+}
+
+func (db *SqliteDB) GetTransactionByPlaidId(user int, plaidId string) (Transaction, error) {
+	var t Transaction
+	err := db.driver.QueryRow("SELECT * FROM transactions WHERE user_id = (?) AND plaid_id = (?);", user, plaidId).Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
+	if err != nil {
+		return t, err
+	}
+
+	return t, nil
 }
 
 func (db *SqliteDB) UpdateTransaction(userId int, t Transaction) error {
