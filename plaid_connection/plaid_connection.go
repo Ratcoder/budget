@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+
 	// "log"
 	"net/http"
 	"os"
@@ -274,6 +276,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 		Name      string `json:"name"`
 		Balances  struct {
 			Available float64 `json:"available"`
+			Current   float64 `json:"current"`
 		} `json:"balances"`
 		Type string `json:"type"`
 	}
@@ -285,6 +288,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 	if err != nil {
 		return err
 	}
+	log.Println(responce)
 
 	for _, account := range responce.Accounts {
 		if account.Type != "depository" {
@@ -298,7 +302,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 			a = database.Account{
 				UserId: user.Id,
 				Name:   account.Name,
-				Balance: int(account.Balances.Available * 100),
+				Balance: int(account.Balances.Current * 100),
 				PlaidAccountId:  account.AccountID,
 			}
 			err = (*db).CreateAccount(a)
@@ -307,7 +311,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 
 		// Update account
 		a.Name = account.Name
-		a.Balance = int(account.Balances.Available * 100)
+		a.Balance = int(account.Balances.Current * 100)
 		err = (*db).UpdateAccount(userId, a)
 	}
 	return nil
