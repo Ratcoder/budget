@@ -373,7 +373,7 @@ view model =
                                         [ div [ style "display" "flex", style "gap" "3ch" ]
                                             [ div [ style "flex" "1" ] [ text c.name ]
                                             , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.available / 100)), onInput (\s -> UpdateCategory c.id { c | available = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
-                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.budgeted ]
+                                            , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
                                             ]
                                         ]
                                     , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
