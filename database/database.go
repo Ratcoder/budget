@@ -253,7 +253,7 @@ func (db *SqliteDB) GetTransactions(user int) ([]Transaction, error) {
 
 	for rows.Next() {
 		var t Transaction
-		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId)
+		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
 		if err != nil {
 			return nil, err
 		} else {
