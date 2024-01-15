@@ -49,7 +49,7 @@ func CreateLinkToken(userId int) (linkToken string, err error) {
 		User: ReqUser{
 			ClientUserId: strconv.Itoa(userId),
 		},
-		Products:     []string{"transactions", "auth"},
+		Products:     []string{"transactions"},
 		CountryCodes: []string{"US"},
 		Language:     "en",
 	}
