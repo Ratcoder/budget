@@ -6,35 +6,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Database interface {
-	Init() error
-	Close() error
-	// Users
-	CreateUser(u User) error
-	GetUserByName(name string) (User, error)
-	GetUserById(id int) (User, error)
-	UpdateUser(id int, u User) error
-	DeleteUser(id int) error
-	// Transactions
-	CreateTransaction(t Transaction) error
-	GetTransactions(user int) ([]Transaction, error)
-	GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error)
-	GetTransactionByPlaidId(user int, plaidId string) (Transaction, error)
-	UpdateTransaction(userId int, t Transaction) error
-	DeleteTransaction(id int) error
-	// Categories
-	CreateCategory(c Category) error
-	GetCategories(user int) ([]Category, error)
-	UpdateCategory(userId int, c Category) error
-	DeleteCategory(id int) error
-	// Accounts
-	CreateAccount(a Account) error
-	GetAccounts(user int) ([]Account, error)
-	GetAccountByPlaidId(user int, plaidId string) (Account, error)
-	UpdateAccount(userId int, a Account) error
-	DeleteAccount(id int) error
-}
-
 type Transaction struct {
 	Id            int
 	Date          string
@@ -71,19 +42,20 @@ type Account struct {
 	PlaidAccountId string
 }
 
-type SqliteDB struct {
+type Database struct {
 	driver *sql.DB
 }
 
-func CreateSqliteDB() *SqliteDB {
-	return &SqliteDB{}
+func CreateDatabase() *Database {
+	return &Database{}
 }
 
-func (db *SqliteDB) Init() error {
+func Create() (Database, error) {
+	var db = Database{}
 	var err error
 	db.driver, err = sql.Open("sqlite3", "./db")
 	if err != nil {
-		return err
+		return db, err
 	}
 
 	sqlStmt := `
@@ -131,18 +103,14 @@ func (db *SqliteDB) Init() error {
 	`
 
 	_, err = db.driver.Exec(sqlStmt)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return db, err
 }
 
-func (db *SqliteDB) Close() error {
+func (db *Database) Close() error {
 	return db.driver.Close()
 }
 
-func (db *SqliteDB) CreateUser(u User) error {
+func (db *Database) CreateUser(u User) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -162,7 +130,7 @@ func (db *SqliteDB) CreateUser(u User) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) GetUserByName(name string) (User, error) {
+func (db *Database) GetUserByName(name string) (User, error) {
 	var u User
 	err := db.driver.QueryRow("SELECT * FROM users WHERE name = (?);", name).Scan(&u.Id, &u.Name, &u.Password, &u.PlaidItem, &u.PlaidTransactionsCursor)
 	if err != nil {
@@ -172,7 +140,7 @@ func (db *SqliteDB) GetUserByName(name string) (User, error) {
 	return u, nil
 }
 
-func (db *SqliteDB) GetUserById(id int) (User, error) {
+func (db *Database) GetUserById(id int) (User, error) {
 	var u User
 	err := db.driver.QueryRow("SELECT * FROM users WHERE id = (?);", id).Scan(&u.Id, &u.Name, &u.Password, &u.PlaidItem, &u.PlaidTransactionsCursor)
 	if err != nil {
@@ -182,7 +150,7 @@ func (db *SqliteDB) GetUserById(id int) (User, error) {
 	return u, nil
 }
 
-func (db *SqliteDB) UpdateUser(id int, u User) error {
+func (db *Database) UpdateUser(id int, u User) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -202,7 +170,7 @@ func (db *SqliteDB) UpdateUser(id int, u User) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) DeleteUser(id int) error {
+func (db *Database) DeleteUser(id int) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -222,7 +190,7 @@ func (db *SqliteDB) DeleteUser(id int) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) CreateTransaction(t Transaction) error {
+func (db *Database) CreateTransaction(t Transaction) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -242,7 +210,7 @@ func (db *SqliteDB) CreateTransaction(t Transaction) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) GetTransactions(user int) ([]Transaction, error) {
+func (db *Database) GetTransactions(user int) ([]Transaction, error) {
 	rows, err := db.driver.Query("SELECT * FROM transactions WHERE user_id = (?);", user)
 	if err != nil {
 		return nil, err
@@ -264,7 +232,7 @@ func (db *SqliteDB) GetTransactions(user int) ([]Transaction, error) {
 	return transactions, nil
 }
 
-func (db *SqliteDB) GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error) {
+func (db *Database) GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error) {
 	rows, err := db.driver.Query("SELECT * FROM transactions WHERE user_id = (?) AND date >= (?) AND date <= (?);", user, start, end)
 	if err != nil {
 		return nil, err
@@ -286,7 +254,7 @@ func (db *SqliteDB) GetTransactionsDateRange(user int, start string, end string)
 	return transactions, nil
 }
 
-func (db *SqliteDB) GetTransactionByPlaidId(user int, plaidId string) (Transaction, error) {
+func (db *Database) GetTransactionByPlaidId(user int, plaidId string) (Transaction, error) {
 	var t Transaction
 	err := db.driver.QueryRow("SELECT * FROM transactions WHERE user_id = (?) AND plaid_id = (?);", user, plaidId).Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
 	if err != nil {
@@ -296,7 +264,7 @@ func (db *SqliteDB) GetTransactionByPlaidId(user int, plaidId string) (Transacti
 	return t, nil
 }
 
-func (db *SqliteDB) UpdateTransaction(userId int, t Transaction) error {
+func (db *Database) UpdateTransaction(userId int, t Transaction) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -316,7 +284,7 @@ func (db *SqliteDB) UpdateTransaction(userId int, t Transaction) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) DeleteTransaction(id int) error {
+func (db *Database) DeleteTransaction(id int) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -336,7 +304,7 @@ func (db *SqliteDB) DeleteTransaction(id int) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) CreateCategory(c Category) error {
+func (db *Database) CreateCategory(c Category) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -356,7 +324,7 @@ func (db *SqliteDB) CreateCategory(c Category) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) GetCategories(user int) ([]Category, error) {
+func (db *Database) GetCategories(user int) ([]Category, error) {
 	rows, err := db.driver.Query("SELECT * FROM categories WHERE user_id = (?);", user)
 	if err != nil {
 		return nil, err
@@ -378,7 +346,7 @@ func (db *SqliteDB) GetCategories(user int) ([]Category, error) {
 	return categories, nil
 }
 
-func (db *SqliteDB) UpdateCategory(userId int, c Category) error {
+func (db *Database) UpdateCategory(userId int, c Category) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -398,7 +366,7 @@ func (db *SqliteDB) UpdateCategory(userId int, c Category) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) DeleteCategory(id int) error {
+func (db *Database) DeleteCategory(id int) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -418,7 +386,7 @@ func (db *SqliteDB) DeleteCategory(id int) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) CreateAccount(a Account) error {
+func (db *Database) CreateAccount(a Account) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -438,7 +406,7 @@ func (db *SqliteDB) CreateAccount(a Account) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) GetAccounts(user int) ([]Account, error) {
+func (db *Database) GetAccounts(user int) ([]Account, error) {
 	rows, err := db.driver.Query("SELECT * FROM accounts WHERE user_id = (?);", user)
 	if err != nil {
 		return nil, err
@@ -460,7 +428,7 @@ func (db *SqliteDB) GetAccounts(user int) ([]Account, error) {
 	return accounts, nil
 }
 
-func (db *SqliteDB) GetAccountByPlaidId(user int, plaidId string) (Account, error) {
+func (db *Database) GetAccountByPlaidId(user int, plaidId string) (Account, error) {
 	var a Account
 	err := db.driver.QueryRow("SELECT * FROM accounts WHERE user_id = (?) AND plaid_account_id = (?);", user, plaidId).Scan(&a.Id, &a.UserId, &a.Name, &a.Balance, &a.PlaidAccountId)
 	if err != nil {
@@ -470,7 +438,7 @@ func (db *SqliteDB) GetAccountByPlaidId(user int, plaidId string) (Account, erro
 	return a, nil
 }
 
-func (db *SqliteDB) UpdateAccount(userId int, a Account) error {
+func (db *Database) UpdateAccount(userId int, a Account) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err
@@ -490,7 +458,7 @@ func (db *SqliteDB) UpdateAccount(userId int, a Account) error {
 	return tx.Commit()
 }
 
-func (db *SqliteDB) DeleteAccount(id int) error {
+func (db *Database) DeleteAccount(id int) error {
 	tx, err := db.driver.Begin()
 	if err != nil {
 		return err

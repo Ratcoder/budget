@@ -34,9 +34,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	var db database.Database
-	db = database.CreateSqliteDB()
-	if err := db.Init(); err != nil {
+	db, err := database.Create()
+	if err != nil {
 		log.Fatal("Error opening database:", err)
 	}
 	defer db.Close()
