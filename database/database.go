@@ -29,8 +29,6 @@ type Category struct {
 type User struct {
 	Id                      int
 	Name                    string
-	PlaidItem               string
-	PlaidTransactionsCursor string
 	Password                string
 }
 
@@ -40,6 +38,13 @@ type Account struct {
 	Name           string
 	Balance        int
 	PlaidAccountId string
+}
+
+type PlaidItem struct {
+	Id                 int
+	UserId             int
+	AccessToken        string
+	TransactionsCursor string
 }
 
 type Database struct {
@@ -83,12 +88,18 @@ func Create() (Database, error) {
 	);
 	-- DELETE FROM categories;
 
+	CREATE TABLE IF NOT EXISTS plaid_items (
+		id INTEGER PRIMARY KEY,
+		user_id INT NOT NULL,
+		access_token TEXT,
+		transactions_cursor TEXT,
+		FOREIGN KEY(user_id) REFERENCES users(id)
+	);
+
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY,
 		name TEXT,
-		password TEXT,
-		plaid_item TEXT,
-		plaid_transactions_cursor TEXT
+		password TEXT
 	);
 	-- DELETE FROM users;
 
@@ -116,13 +127,13 @@ func (db *Database) CreateUser(u User) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO users(name, password, plaid_item, plaid_transactions_cursor) VALUES(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO users(name, password) VALUES(?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(u.Name, u.Password, u.PlaidItem, u.PlaidTransactionsCursor)
+	_, err = stmt.Exec(u.Name, u.Password)
 	if err != nil {
 		return err
 	}
@@ -132,7 +143,7 @@ func (db *Database) CreateUser(u User) error {
 
 func (db *Database) GetUserByName(name string) (User, error) {
 	var u User
-	err := db.driver.QueryRow("SELECT * FROM users WHERE name = (?);", name).Scan(&u.Id, &u.Name, &u.Password, &u.PlaidItem, &u.PlaidTransactionsCursor)
+	err := db.driver.QueryRow("SELECT * FROM users WHERE name = (?);", name).Scan(&u.Id, &u.Name, &u.Password)
 	if err != nil {
 		return u, err
 	}
@@ -142,7 +153,7 @@ func (db *Database) GetUserByName(name string) (User, error) {
 
 func (db *Database) GetUserById(id int) (User, error) {
 	var u User
-	err := db.driver.QueryRow("SELECT * FROM users WHERE id = (?);", id).Scan(&u.Id, &u.Name, &u.Password, &u.PlaidItem, &u.PlaidTransactionsCursor)
+	err := db.driver.QueryRow("SELECT * FROM users WHERE id = (?);", id).Scan(&u.Id, &u.Name, &u.Password)
 	if err != nil {
 		return u, err
 	}
@@ -156,13 +167,13 @@ func (db *Database) UpdateUser(id int, u User) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE users SET name = (?), password = (?), plaid_item = (?), plaid_transactions_cursor = (?) WHERE id = (?);")
+	stmt, err := tx.Prepare("UPDATE users SET name = (?), password = (?) WHERE id = (?);")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(u.Name, u.Password, u.PlaidItem, u.PlaidTransactionsCursor, id)
+	_, err = stmt.Exec(u.Name, u.Password, id)
 	if err != nil {
 		return err
 	}
@@ -465,6 +476,88 @@ func (db *Database) DeleteAccount(id int) error {
 	}
 
 	stmt, err := tx.Prepare("DELETE FROM accounts WHERE id = (?);")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (db *Database) CreatePlaidItem(item PlaidItem) error {
+	tx, err := db.driver.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO plaid_items(user_id, access_token, transactions_cursor) VALUES(?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(item.UserId, item.AccessToken, item.TransactionsCursor)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (db *Database) GetPlaidItems(user int) ([]PlaidItem, error) {
+	rows, err := db.driver.Query("SELECT id, user_id, access_token, transactions_cursor FROM plaid_items WHERE user_id = (?);", user)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []PlaidItem
+
+	for rows.Next() {
+		var item PlaidItem
+		err := rows.Scan(&item.Id, &item.UserId, &item.AccessToken, &item.TransactionsCursor)
+		if err != nil {
+			return nil, err
+		} else {
+			items = append(items, item)
+		}
+	}
+
+	return items, nil
+}
+
+func (db *Database) UpdatePlaidItem(userId int, item PlaidItem) error {
+	tx, err := db.driver.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("UPDATE plaid_items SET access_token = (?), transactions_cursor = (?) WHERE user_id = (?) AND id = (?);")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(item.AccessToken, item.TransactionsCursor, userId, item.Id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (db *Database) DeletePlaidItem(id int) error {
+	tx, err := db.driver.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("DELETE FROM plaid_items WHERE id = (?);")
 	if err != nil {
 		return err
 	}

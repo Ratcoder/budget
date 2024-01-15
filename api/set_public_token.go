@@ -2,6 +2,7 @@ package api
 
 import (
 	plaid "budget/plaid_connection"
+	database "budget/database"
 	"io"
 	"net/http"
 )
@@ -29,13 +30,13 @@ func set_public_token(w http.ResponseWriter, r *http.Request) {
 
 	// Store access token in database
 	userId := r.Context().Value("user").(int)
-	user, err := (*db).GetUserById(userId)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	item := database.PlaidItem{
+		UserId: userId,
+		AccessToken: accessToken,
+		TransactionsCursor: "",
 	}
-	user.PlaidItem = accessToken
-	if err := (*db).UpdateUser(userId, user); err != nil {
+	err = (*db).CreatePlaidItem(item)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

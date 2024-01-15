@@ -44,8 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Error getting user:", err)
 	}
-	go plaid.SyncTransactions(user.Id, &db)
-	go plaid.SyncAccounts(user.Id, &db)
+	go plaid.SyncItems(user.Id, &db)
 
 	PORT, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {

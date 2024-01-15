@@ -120,15 +120,31 @@ func ExchangePublicToken(publicToken string) (accessToken string, err error) {
 	return responce.AccessToken, nil
 }
 
-func SyncTransactions(userId int, db *database.Database) (ret string, err error) {
+func SyncItems(userId int, db *database.Database) error {
 	loadEnv()
 
-	// Load user from database
-	user, err := (*db).GetUserById(userId)
+	// Load plaid items from database
+	items, err := (*db).GetPlaidItems(userId)
 	if err != nil {
-		return "", err
+		return err
 	}
 
+	// Sync each plaid item
+	for _, item := range items {
+		err := syncAccounts(item, db)
+		if err != nil {
+			return err
+		}
+		err = syncTransactions(item, db)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func syncTransactions(item database.PlaidItem, db *database.Database) error {
 	// Prepare request
 	req := struct {
 		ClientID    string `json:"client_id"`
@@ -138,22 +154,22 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 	}{
 		ClientID:    PLAID_CLIENT_ID,
 		Secret:      PLAID_SECRET,
-		AccessToken: user.PlaidItem,
-		Cursor:      user.PlaidTransactionsCursor,
+		AccessToken: item.AccessToken,
+		Cursor:      item.TransactionsCursor,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	reqReader := bytes.NewReader([]byte(reqBytes))
 
 	// Send request
 	resp, err := http.Post("https://" + PLAID_ENV + ".plaid.com/transactions/sync", "application/json", reqReader)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("Plaid API error")
+		return fmt.Errorf("Plaid API error")
 	}
 
 	// Parse response
@@ -180,7 +196,7 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 	}{}
 	err = json.NewDecoder(resp.Body).Decode(&responce)
 	if err != nil {
-		return "", err
+		return err
 	}
 	for _, transaction := range responce.Added {
 		t := database.Transaction{
@@ -188,18 +204,18 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 			Amount:        int(transaction.Amount * -100),
 			Account:       transaction.AccountID,
 			Description:   transaction.Name,
-			UserId:        userId,
+			UserId:        item.UserId,
 			PlaidCategory: transaction.Category.Primary,
 			PlaidId:       transaction.TransactionID,
 		}
 		err := (*db).CreateTransaction(t)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
 	for _, transaction := range responce.Modified {
-		t, err := (*db).GetTransactionByPlaidId(userId, transaction.TransactionID)
+		t, err := (*db).GetTransactionByPlaidId(item.UserId, transaction.TransactionID)
 		if err != nil {
 			continue
 		}
@@ -208,45 +224,37 @@ func SyncTransactions(userId int, db *database.Database) (ret string, err error)
 		t.Account = transaction.AccountID
 		t.Description = transaction.Name
 		t.PlaidCategory = transaction.Category.Primary
-		err = (*db).UpdateTransaction(userId, t)
+		err = (*db).UpdateTransaction(item.UserId, t)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
 	for _, transaction := range responce.Removed {
-		t, err := (*db).GetTransactionByPlaidId(userId, transaction.TransactionID)
+		t, err := (*db).GetTransactionByPlaidId(item.UserId, transaction.TransactionID)
 		if err != nil {
 			continue
 		}
 		err = (*db).DeleteTransaction(t.Id)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
-	user.PlaidTransactionsCursor = responce.NextCursor
-	err = (*db).UpdateUser(userId, user)
-	if err != nil {
-		return "", err
-	}
-
-	if responce.HasMore {
-		return SyncTransactions(userId, db)
-	}
-
-	return "", nil
-}
-
-func SyncAccounts(userId int, db *database.Database) error {
-	loadEnv()
-
-	// Load user from database
-	user, err := (*db).GetUserById(userId)
+	item.TransactionsCursor = responce.NextCursor
+	err = (*db).UpdatePlaidItem(item.UserId, item)
 	if err != nil {
 		return err
 	}
 
+	if responce.HasMore {
+		return syncTransactions(item, db)
+	}
+
+	return nil
+}
+
+func syncAccounts(item database.PlaidItem, db *database.Database) error {
 	// Prepare request
 	req := struct {
 		ClientID    string `json:"client_id"`
@@ -255,7 +263,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 	}{
 		ClientID:    PLAID_CLIENT_ID,
 		Secret:      PLAID_SECRET,
-		AccessToken: user.PlaidItem,
+		AccessToken: item.AccessToken,
 	}
 
 	reqBytes, err := json.Marshal(req)
@@ -296,11 +304,11 @@ func SyncAccounts(userId int, db *database.Database) error {
 		}
 
 		// Check if account already exists
-		a, err := (*db).GetAccountByPlaidId(user.Id, account.AccountID)
+		a, err := (*db).GetAccountByPlaidId(item.UserId, account.AccountID)
 		if err != nil {
 			// Create account
 			a = database.Account{
-				UserId: user.Id,
+				UserId: item.UserId,
 				Name:   account.Name,
 				Balance: int(account.Balances.Current * 100),
 				PlaidAccountId:  account.AccountID,
@@ -312,7 +320,7 @@ func SyncAccounts(userId int, db *database.Database) error {
 		// Update account
 		a.Name = account.Name
 		a.Balance = int(account.Balances.Current * 100)
-		err = (*db).UpdateAccount(userId, a)
+		err = (*db).UpdateAccount(item.UserId, a)
 	}
 	return nil
 }
