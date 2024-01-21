@@ -8,7 +8,7 @@ import (
 )
 
 type Transaction struct {
-	Id            int    `json:"id"`
+	Id            int    `json:"id,omitempty"`
 	Date          string `json:"date"`
 	Description   string `json:"description"`
 	Amount        int    `json:"amount"`
@@ -53,23 +53,22 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 		w.Write(jsonTransactions)
 	case "POST":
 		// Create a new transaction
-		// Read body
-		body, err := io.ReadAll(r.Body)
+		var apiTransaction Transaction
+		err := json.NewDecoder(r.Body).Decode(&apiTransaction)
 		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Convert to Transaction
-		var transaction database.Transaction
-		err = json.Unmarshal(body, &transaction)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
+		transaction := database.Transaction{
+			Date: apiTransaction.Date,
+			Description: apiTransaction.Description,
+			Amount: apiTransaction.Amount,
+			AccountId: apiTransaction.AccountId,
+			CategoryId: apiTransaction.CategoryId,
+			UserId: userId,
 		}
-		transaction.UserId = userId
 
-		// Create transaction
 		err = (*db).CreateTransaction(transaction)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
