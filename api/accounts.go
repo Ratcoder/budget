@@ -3,20 +3,27 @@ package api
 import (
 	"net/http"
 	"encoding/json"
+	"budget/database"
 )
 
 type Account struct {
-	Id            int    `json:"id"`
+	Id            int    `json:"id,omitempty"`
 	Name          string `json:"name"`
 	Balance       int    `json:"balance"`
 }
 
 func accounts(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	switch r.Method {
+	case "GET":
+		getAccounts(w, r)
+	case "POST":
+		createAccount(w, r)
+	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+func getAccounts(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
 	accounts, err := (*db).GetAccounts(userId)
 	if err != nil {
@@ -41,4 +48,26 @@ func accounts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonAccounts)
+}
+
+func createAccount(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value("user").(int)
+	var apiAccount Account
+	err := json.NewDecoder(r.Body).Decode(&apiAccount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	account := database.Account{
+		Name:    apiAccount.Name,
+		Balance: apiAccount.Balance,
+		UserId:  userId,
+	}
+
+	err = (*db).CreateAccount(account)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
