@@ -14,6 +14,7 @@ type Transaction struct {
 	Amount        int    `json:"amount"`
 	AccountId     int    `json:"account_id"`
 	CategoryId    int    `json:"category_id"`
+	IsTransfer    bool   `json:"is_transfer"`
 }
 
 func transactions(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +38,7 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 				Amount:        transaction.Amount,
 				AccountId:     transaction.AccountId,
 				CategoryId:    transaction.CategoryId,
+				IsTransfer:    transaction.IsTransfer,
 			}
 			apiTransactions[i] = apiTransaction
 		}
@@ -66,6 +68,7 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			Amount: apiTransaction.Amount,
 			AccountId: apiTransaction.AccountId,
 			CategoryId: apiTransaction.CategoryId,
+			IsTransfer: apiTransaction.IsTransfer,
 			UserId: userId,
 		}
 
@@ -102,6 +105,7 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			Amount:        apiTransaction.Amount,
 			AccountId:     apiTransaction.AccountId,
 			CategoryId:    apiTransaction.CategoryId,
+			IsTransfer:    apiTransaction.IsTransfer,
 			UserId:        userId,
 		}
 
