@@ -56,6 +56,7 @@ type alias Transaction =
     , description : String
     , date : String
     , categoryId : Int
+    , isTransfer : Bool
     }
 
 
@@ -412,12 +413,13 @@ formatDollars amount =
 
 transactionDecoder : Json.Decode.Decoder Transaction
 transactionDecoder =
-    Json.Decode.map5 Transaction
+    Json.Decode.map6 Transaction
         (Json.Decode.field "id" Json.Decode.int)
         (Json.Decode.field "amount" Json.Decode.int)
         (Json.Decode.field "description" Json.Decode.string)
         (Json.Decode.field "date" Json.Decode.string)
         (Json.Decode.field "category_id" Json.Decode.int)
+        (Json.Decode.field "is_transfer" Json.Decode.bool)
 
 
 encodeTransaction : Transaction -> Json.Encode.Value
@@ -428,6 +430,7 @@ encodeTransaction transaction =
         , ( "description", Json.Encode.string transaction.description )
         , ( "date", Json.Encode.string transaction.date )
         , ( "category_id", Json.Encode.int transaction.categoryId )
+        , ( "is_transfer", Json.Encode.bool transaction.isTransfer )
         ]
 
 
