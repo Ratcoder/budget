@@ -11,7 +11,7 @@ type Transaction struct {
 	Date          string
 	Description   string
 	Amount        int
-	Account       string
+	AccountId     int
 	UserId        int
 	PlaidCategory string
 	CategoryId    int
@@ -69,12 +69,13 @@ func Create() (Database, error) {
 		date TEXT,
 		description TEXT,
 		amount INT,
-		account TEXT,
+		account_id TEXT,
 		user_id INT NOT NULL,
 		plaid_category TEXT,
 		category_id INT,
 		plaid_id TEXT,
-		FOREIGN KEY(user_id) REFERENCES users(id)
+		FOREIGN KEY(user_id) REFERENCES users(id),
+		FOREIGN KEY(account_id) REFERENCES accounts(id)
 	);
 	-- DELETE FROM transactions;
 
@@ -207,13 +208,13 @@ func (db *Database) CreateTransaction(t Transaction) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO transactions(date, description, amount, account, user_id, plaid_category, category_id, plaid_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO transactions(date, description, amount, account_id, user_id, plaid_category, category_id, plaid_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.Account, t.UserId, t.PlaidCategory, t.CategoryId, t.PlaidId)
+	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.AccountId, t.UserId, t.PlaidCategory, t.CategoryId, t.PlaidId)
 	if err != nil {
 		return err
 	}
@@ -222,7 +223,7 @@ func (db *Database) CreateTransaction(t Transaction) error {
 }
 
 func (db *Database) GetTransactions(user int) ([]Transaction, error) {
-	rows, err := db.driver.Query("SELECT * FROM transactions WHERE user_id = (?);", user)
+	rows, err := db.driver.Query("SELECT id, date, description, amount, account_id, user_id, plaid_category, category_id, plaid_id FROM transactions WHERE user_id = (?);", user)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +233,7 @@ func (db *Database) GetTransactions(user int) ([]Transaction, error) {
 
 	for rows.Next() {
 		var t Transaction
-		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
+		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.AccountId, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
 		if err != nil {
 			return nil, err
 		} else {
@@ -244,7 +245,7 @@ func (db *Database) GetTransactions(user int) ([]Transaction, error) {
 }
 
 func (db *Database) GetTransactionsDateRange(user int, start string, end string) ([]Transaction, error) {
-	rows, err := db.driver.Query("SELECT * FROM transactions WHERE user_id = (?) AND date >= (?) AND date <= (?);", user, start, end)
+	rows, err := db.driver.Query("SELECT id, date, description, amount, account_id, user_id, plaid_category, category_id, plaid_id FROM transactions WHERE user_id = (?) AND date >= (?) AND date <= (?);", user, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +255,7 @@ func (db *Database) GetTransactionsDateRange(user int, start string, end string)
 
 	for rows.Next() {
 		var t Transaction
-		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
+		err := rows.Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.AccountId, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
 		if err != nil {
 			return nil, err
 		} else {
@@ -267,7 +268,7 @@ func (db *Database) GetTransactionsDateRange(user int, start string, end string)
 
 func (db *Database) GetTransactionByPlaidId(user int, plaidId string) (Transaction, error) {
 	var t Transaction
-	err := db.driver.QueryRow("SELECT * FROM transactions WHERE user_id = (?) AND plaid_id = (?);", user, plaidId).Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.Account, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
+	err := db.driver.QueryRow("SELECT id, date, description, amount, account_id, user_id, plaid_category, category_id, plaid_id FROM transactions WHERE user_id = (?) AND plaid_id = (?);", user, plaidId).Scan(&t.Id, &t.Date, &t.Description, &t.Amount, &t.AccountId, &t.UserId, &t.PlaidCategory, &t.CategoryId, &t.PlaidId)
 	if err != nil {
 		return t, err
 	}

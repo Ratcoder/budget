@@ -12,7 +12,7 @@ type Transaction struct {
 	Date          string `json:"date"`
 	Description   string `json:"description"`
 	Amount        int    `json:"amount"`
-	Account       string `json:"account"`
+	AccountId     int    `json:"account_id"`
 	CategoryId    int    `json:"category_id"`
 }
 
@@ -35,7 +35,7 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 				Date:          transaction.Date,
 				Description:   transaction.Description,
 				Amount:        transaction.Amount,
-				Account:       transaction.Account,
+				AccountId:     transaction.AccountId,
 				CategoryId:    transaction.CategoryId,
 			}
 			apiTransactions[i] = apiTransaction
@@ -101,7 +101,7 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			Date:          apiTransaction.Date,
 			Description:   apiTransaction.Description,
 			Amount:        apiTransaction.Amount,
-			Account:       apiTransaction.Account,
+			AccountId:     apiTransaction.AccountId,
 			CategoryId:    apiTransaction.CategoryId,
 			UserId:        userId,
 		}

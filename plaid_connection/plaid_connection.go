@@ -3,6 +3,7 @@ package plaid_connection
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -198,11 +199,25 @@ func syncTransactions(item database.PlaidItem, db *database.Database) error {
 	if err != nil {
 		return err
 	}
+
+	accounts, err := (*db).GetAccounts(item.UserId)
+	if err != nil {
+		return err
+	}
+	plaidIdtoAccountId := make(map[string]int)
+	for _, account := range accounts {
+		plaidIdtoAccountId[account.PlaidAccountId] = account.Id
+	}
+
 	for _, transaction := range responce.Added {
+		accountId, ok := plaidIdtoAccountId[transaction.AccountID]
+		if !ok {
+			return errors.New("account not found")
+		}
 		t := database.Transaction{
 			Date:          transaction.Date,
 			Amount:        int(transaction.Amount * -100),
-			Account:       transaction.AccountID,
+			AccountId:     accountId,
 			Description:   transaction.Name,
 			UserId:        item.UserId,
 			PlaidCategory: transaction.Category.Primary,
@@ -221,7 +236,11 @@ func syncTransactions(item database.PlaidItem, db *database.Database) error {
 		}
 		t.Date = transaction.Date
 		t.Amount = int(transaction.Amount * -100)
-		t.Account = transaction.AccountID
+		accountId, ok := plaidIdtoAccountId[transaction.AccountID]
+		if !ok {
+			return errors.New("account not found")
+		}
+		t.AccountId = accountId
 		t.Description = transaction.Name
 		t.PlaidCategory = transaction.Category.Primary
 		err = (*db).UpdateTransaction(item.UserId, t)
