@@ -18,6 +18,8 @@ func accounts(w http.ResponseWriter, r *http.Request) {
 		getAccounts(w, r)
 	case "POST":
 		createAccount(w, r)
+	case "PATCH":
+		updateAccount(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -66,6 +68,29 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = (*db).CreateAccount(account)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func updateAccount(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value("user").(int)
+	var apiAccount Account
+	err := json.NewDecoder(r.Body).Decode(&apiAccount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	account := database.Account{
+		Id:      apiAccount.Id,
+		Name:    apiAccount.Name,
+		Balance: apiAccount.Balance,
+		UserId:  userId,
+	}
+
+	err = (*db).UpdateAccount(userId, account)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
