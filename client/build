@@ -1,0 +1,4 @@
+#! /bin/bash
+
+elm make src/Main.elm --output=../static/elm.js
+cp -r assets ../static/assets
