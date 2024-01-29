@@ -290,7 +290,7 @@ func (db *Database) UpdateTransaction(userId int, t Transaction) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.CategoryId, userId, t.IsTransfer, t.Id)
+	_, err = stmt.Exec(t.Date, t.Description, t.Amount, t.CategoryId, t.IsTransfer, userId, t.Id)
 	if err != nil {
 		return err
 	}
