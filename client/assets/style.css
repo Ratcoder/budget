@@ -25,7 +25,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 30px;
+    height: 3rem;
 }
 
 .transaction span {
@@ -33,4 +33,9 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.transaction-description {
+    max-width: 30ch;
+    font-weight: bold;
 }

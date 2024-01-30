@@ -395,7 +395,7 @@ view model =
                                                         , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
                                                         ]
                                                     ]
-                                                , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
+                                                , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.sortBy .date <| List.filter (\t -> t.categoryId == c.id) user.transactions
                                                 ]
                                             ]
                                     )
@@ -422,12 +422,66 @@ viewTransaction : Transaction -> Html Msg
 viewTransaction transaction =
     div [ class "transaction", draggable "true", on "dragstart" (Json.Decode.succeed (DragEnterTransaction transaction)) ]
         [ div []
-            [ span [ style "max-width" "30ch" ] [ text <| transaction.description ]
+            [ span [ class "transaction-description" ] [ text <| transaction.description ]
+            , span [ class "transaction-date" ] [ text <| formatDate transaction.date ]
             ]
         , div []
             [ span [] [ text <| formatDollars transaction.amount ]
             ]
         ]
+
+
+formatDate : String -> String
+formatDate date =
+    case String.split "-" date of
+        [ year, month, day ] ->
+            String.slice 0 3 (String.toInt month |> Maybe.andThen monthToName |> Maybe.withDefault month) ++ " " ++ String.padLeft 2 '0' day ++ ", " ++ year
+
+        _ ->
+            date
+
+
+monthToName : Int -> Maybe String
+monthToName month =
+    case month of
+        1 ->
+            Just "January"
+
+        2 ->
+            Just "February"
+
+        3 ->
+            Just "March"
+
+        4 ->
+            Just "April"
+
+        5 ->
+            Just "May"
+
+        6 ->
+            Just "June"
+
+        7 ->
+            Just "July"
+
+        8 ->
+            Just "August"
+
+        9 ->
+            Just "September"
+
+        10 ->
+            Just "October"
+
+        11 ->
+            Just "November"
+
+        12 ->
+            Just "December"
+
+        _ ->
+            Nothing
 
 
 formatDollars : Int -> String
