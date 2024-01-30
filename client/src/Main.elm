@@ -47,7 +47,13 @@ type Model
         , categoryNameField : String
         , categoryAvailableField : String
         , categoryBudgetedField : String
+        , page : Page
         }
+
+
+type Page
+    = Budget
+    | Accounts
 
 
 type alias Transaction =
@@ -101,6 +107,7 @@ type Msg
     | ChangeCategoryBudgeted String
     | AddCategoryResponse (Result Http.Error String)
     | AddCategory
+    | SetPage Page
     | NoOp
 
 
@@ -136,6 +143,7 @@ update msg model =
                 , categoryNameField = ""
                 , categoryAvailableField = ""
                 , categoryBudgetedField = ""
+                , page = Budget
                 }
                 |> batchUpdate [ GetTransactions, GetCategories, GetAccounts ]
 
@@ -304,6 +312,9 @@ update msg model =
                 }
             )
 
+        ( SetPage page, User user ) ->
+            ( User { user | page = page }, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
 
@@ -358,36 +369,51 @@ view model =
         User user ->
             { title = "Budget"
             , body =
-                [ h2 [] [ text "Dashboard" ]
-                , button [ onClick GetTransactions ] [ text "Get Transactions" ]
-                , button [ onClick GetCategories ] [ text "Get Categories" ]
-                , button [ onClick GetAccounts ] [ text "Get Accounts" ]
-                , h2 [] [ text <| "Uncategorized: " ++ formatDollars (List.foldl (\a sum -> sum + a.balance) 0 user.accounts - List.foldl (\c sum -> sum + c.available) 0 user.categories) ]
-                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2024-01-01") user.transactions
-                , h2 [] [ text "Categories:" ]
-                , ul [] <|
-                    List.map
-                        (\c ->
-                            li [ preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )), style "width" "500px" ]
-                                [ details []
-                                    [ summary []
-                                        [ div [ style "display" "flex", style "gap" "3ch" ]
-                                            [ div [ style "flex" "1" ] [ text c.name ]
-                                            , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.available / 100)), onInput (\s -> UpdateCategory c.id { c | available = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
-                                            , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
-                                            ]
-                                        ]
-                                    , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
-                                    ]
-                                ]
-                        )
-                        user.categories
-                , div []
-                    [ input [ type_ "text", value user.categoryNameField, onInput ChangeCategoryName ] []
-                    , input [ type_ "number", value user.categoryAvailableField, onInput ChangeCategoryAvailable ] []
-                    , input [ type_ "number", value user.categoryBudgetedField, onInput ChangeCategoryBudgeted ] []
-                    , button [ onClick AddCategory ] [ text "Add Category" ]
+                [ div []
+                    [ button [ onClick (SetPage Budget) ] [ text "Budget" ]
+                    , button [ onClick (SetPage Accounts) ] [ text "Accounts" ]
                     ]
+                , case user.page of
+                    Budget ->
+                        div []
+                            [ h2 [] [ text "Budget" ]
+                            , button [ onClick GetTransactions ] [ text "Get Transactions" ]
+                            , button [ onClick GetCategories ] [ text "Get Categories" ]
+                            , button [ onClick GetAccounts ] [ text "Get Accounts" ]
+                            , h2 [] [ text <| "Uncategorized: " ++ formatDollars (List.foldl (\a sum -> sum + a.balance) 0 user.accounts - List.foldl (\c sum -> sum + c.available) 0 user.categories) ]
+                            , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2024-01-01") user.transactions
+                            , h2 [] [ text "Categories:" ]
+                            , ul [] <|
+                                List.map
+                                    (\c ->
+                                        li [ preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )), style "width" "500px" ]
+                                            [ details []
+                                                [ summary []
+                                                    [ div [ style "display" "flex", style "gap" "3ch" ]
+                                                        [ div [ style "flex" "1" ] [ text c.name ]
+                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.available / 100)), onInput (\s -> UpdateCategory c.id { c | available = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
+                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
+                                                        ]
+                                                    ]
+                                                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
+                                                ]
+                                            ]
+                                    )
+                                    user.categories
+                            , div []
+                                [ input [ type_ "text", value user.categoryNameField, onInput ChangeCategoryName ] []
+                                , input [ type_ "number", value user.categoryAvailableField, onInput ChangeCategoryAvailable ] []
+                                , input [ type_ "number", value user.categoryBudgetedField, onInput ChangeCategoryBudgeted ] []
+                                , button [ onClick AddCategory ] [ text "Add Category" ]
+                                ]
+                            ]
+
+                    Accounts ->
+                        div []
+                            [ h2 [] [ text "Accounts" ]
+                            , button [ onClick GetAccounts ] [ text "Get Accounts" ]
+                            , ul [] <| List.map (\a -> li [] [ text <| a.name ++ " - " ++ formatDollars a.balance ]) user.accounts
+                            ]
                 ]
             }
 
