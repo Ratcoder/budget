@@ -383,10 +383,10 @@ view model =
                             , h2 [] [ text <| "Uncategorized: " ++ formatDollars (List.foldl (\a sum -> sum + a.balance) 0 user.accounts - List.foldl (\c sum -> sum + c.available) 0 user.categories) ]
                             , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2024-01-01") user.transactions
                             , h2 [] [ text "Categories:" ]
-                            , ul [] <|
+                            , ul [ class "category-list" ] <|
                                 List.map
                                     (\c ->
-                                        li [ preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )), style "width" "500px" ]
+                                        li [ class "category", preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )) ]
                                             [ details []
                                                 [ summary []
                                                     [ div [ style "display" "flex", style "gap" "3ch" ]
@@ -395,7 +395,7 @@ view model =
                                                         , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
                                                         ]
                                                     ]
-                                                , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
+                                                , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == c.id) user.transactions
                                                 ]
                                             ]
                                     )
@@ -420,7 +420,14 @@ view model =
 
 viewTransaction : Transaction -> Html Msg
 viewTransaction transaction =
-    div [ draggable "true", on "dragstart" (Json.Decode.succeed (DragEnterTransaction transaction)) ] [ text <| transaction.date ++ " - " ++ transaction.description ++ " - " ++ formatDollars transaction.amount ]
+    div [ class "transaction", draggable "true", on "dragstart" (Json.Decode.succeed (DragEnterTransaction transaction)) ]
+        [ div []
+            [ span [ style "max-width" "30ch" ] [ text <| transaction.description ]
+            ]
+        , div []
+            [ span [] [ text <| formatDollars transaction.amount ]
+            ]
+        ]
 
 
 formatDollars : Int -> String

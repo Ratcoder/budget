@@ -2,3 +2,35 @@ body {
     margin: 0;
     padding: 0;
 }
+
+.category-list {
+    list-style: none;
+    width: 800px;
+}
+
+.category {
+    min-height: 50px;
+    transition: all 0.3s ease-in-out;
+}
+
+.category summary {
+    list-style: none;
+}
+
+.category-transaction-list {
+    list-style: none;
+}
+
+.transaction {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 30px;
+}
+
+.transaction span {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
