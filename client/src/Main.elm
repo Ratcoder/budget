@@ -435,7 +435,7 @@ formatDate : String -> String
 formatDate date =
     case String.split "-" date of
         [ year, month, day ] ->
-            String.slice 0 3 (String.toInt month |> Maybe.andThen monthToName |> Maybe.withDefault month) ++ " " ++ String.padLeft 2 '0' day ++ ", " ++ year
+            String.left 3 (String.toInt month |> Maybe.andThen monthToName |> Maybe.withDefault month) ++ " " ++ String.padLeft 2 '0' day ++ ", " ++ year
 
         _ ->
             date
