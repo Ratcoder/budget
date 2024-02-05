@@ -405,7 +405,7 @@ view model =
                                                         , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
                                                         ]
                                                     ]
-                                                , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.sortBy .date <| List.filter (\t -> t.categoryId == c.id) user.transactions
+                                                , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.sortBy .date <| List.filter (\t -> t.categoryId == c.id && t.date >= String.dropRight 2 user.date ++ "01") user.transactions
                                                 ]
                                             ]
                                     )
