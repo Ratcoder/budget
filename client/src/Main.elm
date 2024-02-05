@@ -8,6 +8,8 @@ import Http exposing (..)
 import Json.Decode
 import Json.Encode
 import Platform.Cmd as Cmd
+import Task
+import Time
 
 
 main : Program () Model Msg
@@ -48,6 +50,7 @@ type Model
         , categoryAvailableField : String
         , categoryBudgetedField : String
         , page : Page
+        , date : String
         }
 
 
@@ -108,6 +111,7 @@ type Msg
     | AddCategoryResponse (Result Http.Error String)
     | AddCategory
     | SetPage Page
+    | GetTime Time.Posix
     | NoOp
 
 
@@ -135,7 +139,7 @@ update msg model =
             )
 
         ( LoginResponse (Ok _), Stranger _ ) ->
-            User
+            ( User
                 { transactions = []
                 , accounts = []
                 , categories = []
@@ -144,8 +148,14 @@ update msg model =
                 , categoryAvailableField = ""
                 , categoryBudgetedField = ""
                 , page = Budget
+                , date = ""
                 }
+            , Task.perform GetTime Time.now
+            )
                 |> batchUpdate [ GetTransactions, GetCategories, GetAccounts ]
+
+        ( GetTime time, User user ) ->
+            ( User { user | date = posixToDate Time.utc time }, Cmd.none )
 
         ( DragEnterTransaction transaction, User user ) ->
             ( User { user | dragedTransaction = Just transaction }, Cmd.none )
@@ -319,8 +329,8 @@ update msg model =
             ( model, Cmd.none )
 
 
-batchUpdate : List Msg -> Model -> ( Model, Cmd Msg )
-batchUpdate msgs model =
+batchUpdate : List Msg -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+batchUpdate msgs ( model, cmd ) =
     let
         ( finalModel, finalCmd ) =
             List.foldl
@@ -331,7 +341,7 @@ batchUpdate msgs model =
                     in
                     ( newModel, Cmd.batch [ accCmd, newCmd ] )
                 )
-                ( model, Cmd.none )
+                ( model, cmd )
                 msgs
     in
     ( finalModel, finalCmd )
@@ -381,7 +391,7 @@ view model =
                             , button [ onClick GetCategories ] [ text "Get Categories" ]
                             , button [ onClick GetAccounts ] [ text "Get Accounts" ]
                             , h2 [] [ text <| "Uncategorized: " ++ formatDollars (List.foldl (\a sum -> sum + a.balance) 0 user.accounts - List.foldl (\c sum -> sum + c.available) 0 user.categories) ]
-                            , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= "2024-01-01") user.transactions
+                            , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0) <| List.filter (\t -> t.date >= String.dropRight 2 user.date ++ "01") user.transactions
                             , h2 [] [ text "Categories:" ]
                             , ul [ class "category-list" ] <|
                                 List.map
@@ -429,6 +439,51 @@ viewTransaction transaction =
             [ span [] [ text <| formatDollars transaction.amount ]
             ]
         ]
+
+
+posixToDate : Time.Zone -> Time.Posix -> String
+posixToDate zone posix =
+    String.fromInt (Time.toYear zone posix) ++ "-" ++ String.padLeft 2 '0' (String.fromInt (monthToInt (Time.toMonth zone posix))) ++ "-" ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone posix))
+
+
+monthToInt : Time.Month -> Int
+monthToInt month =
+    case month of
+        Time.Jan ->
+            1
+
+        Time.Feb ->
+            2
+
+        Time.Mar ->
+            3
+
+        Time.Apr ->
+            4
+
+        Time.May ->
+            5
+
+        Time.Jun ->
+            6
+
+        Time.Jul ->
+            7
+
+        Time.Aug ->
+            8
+
+        Time.Sep ->
+            9
+
+        Time.Oct ->
+            10
+
+        Time.Nov ->
+            11
+
+        Time.Dec ->
+            12
 
 
 formatDate : String -> String
