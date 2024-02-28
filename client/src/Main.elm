@@ -518,14 +518,16 @@ view model =
         User user ->
             { title = "Budget"
             , body =
-                [ div []
-                    [ button [ onClick (SetPage Budget) ] [ text "Budget" ]
-                    , button [ onClick (SetPage Accounts) ] [ text "Accounts" ]
-                    , button [ onClick (SetPage (AddTransaction { dateField = user.date, amountField = "", descriptionField = "", categoryIdField = "", isTransferField = False, error = Nothing })) ] [ text "Add Transaction" ]
+                [ nav []
+                    [ ul []
+                        [ button [ onClick (SetPage Budget) ] [ text "Budget" ]
+                        , button [ onClick (SetPage Accounts) ] [ text "Accounts" ]
+                        , button [ onClick (SetPage (AddTransaction { dateField = user.date, amountField = "", descriptionField = "", categoryIdField = "", isTransferField = False, error = Nothing })) ] [ text "Add Transaction" ]
+                        ]
                     ]
                 , case user.page of
                     Budget ->
-                        div []
+                        main_ []
                             [ h2 [] [ text "Budget" ]
                             , p [] [ text <| "Ready to assign: " ++ formatDollars ((List.foldl (\a acc -> acc + a.balance) 0 user.accounts) - (List.foldl (\c acc -> acc + c.available) 0 user.categories)) ]
                             , ul [ class "category-list" ] <|

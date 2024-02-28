@@ -17,6 +17,43 @@ p, button, input, label, summary, details, select, option, span {
     font-size: 1rem;
 }
 
+/* LAYOUT */
+
+body {
+    display: grid;
+    grid-template-areas: "sidebar main";
+    grid-template-columns: 25ch auto;
+    height: 100vh;
+}
+
+nav {
+    grid-area: sidebar;
+    background-color: lightgray;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav button {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    text-align: left;
+    background-color: transparent;
+}
+
+nav button:hover {
+    background-color: darkgray;
+}
+
+main {
+    grid-area: main;
+}
+
+
 .category-list {
     list-style: none;
     width: 800px;
