@@ -57,6 +57,14 @@ type Model
 type Page
     = Budget
     | Accounts
+    | AddTransaction
+        { dateField : String
+        , amountField : String
+        , descriptionField : String
+        , categoryIdField : String
+        , isTransferField : Bool
+        , error : Maybe String
+        }
 
 
 type alias Transaction =
@@ -112,6 +120,13 @@ type Msg
     | AddCategory
     | SetPage Page
     | GetTime Time.Posix
+    | ChangeTransactionDate String
+    | ChangeTransactionAmount String
+    | ChangeTransactionDescription String
+    | ChangeTransactionCategoryId String
+    | ChangeTransactionIsTransfer
+    | SubmitTransaction
+    | SubmitTransactionResponse (Result Http.Error String)
     | NoOp
 
 
@@ -325,6 +340,117 @@ update msg model =
         ( SetPage page, User user ) ->
             ( User { user | page = page }, Cmd.none )
 
+        ( ChangeTransactionDate date, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    ( User { user | page = AddTransaction { page | dateField = date } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( ChangeTransactionAmount amount, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    ( User { user | page = AddTransaction { page | amountField = amount } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( ChangeTransactionDescription description, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    ( User { user | page = AddTransaction { page | descriptionField = description } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( ChangeTransactionCategoryId categoryId, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    ( User { user | page = AddTransaction { page | categoryIdField = categoryId } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( ChangeTransactionIsTransfer, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    ( User { user | page = AddTransaction { page | isTransferField = not page.isTransferField } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( SubmitTransaction, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    let
+                        transaction =
+                            Ok (Transaction 0 0 "" "" 0 False)
+                                |> Result.andThen
+                                    (\t ->
+                                        case String.toInt page.amountField of
+                                            Just a ->
+                                                if a == 0 then
+                                                    Err "Amount cannot be 0"
+
+                                                else
+                                                    Ok { t | amount = a }
+
+                                            Nothing ->
+                                                Err "Amount must be a number"
+                                    )
+                                |> Result.andThen
+                                    (\t ->
+                                        case String.toInt page.categoryIdField of
+                                            Just c ->
+                                                if c == 0 then
+                                                    Err "Category field is required"
+
+                                                else
+                                                    Ok { t | categoryId = c }
+
+                                            Nothing ->
+                                                Err "Category must be a number"
+                                    )
+                                |> Result.andThen
+                                    (\t ->
+                                        if page.dateField == "" then
+                                            Err "Date field is required"
+
+                                        else
+                                            Ok { t | date = page.dateField }
+                                    )
+                                |> Result.andThen
+                                    (\t ->
+                                        if page.descriptionField == "" then
+                                            Err "Desciption field is required"
+
+                                        else
+                                            Ok { t | description = page.descriptionField }
+                                    )
+                                |> Result.andThen
+                                    (\t ->
+                                        Ok { t | isTransfer = page.isTransferField }
+                                    )
+                    in
+                    case transaction of
+                        Ok t ->
+                            ( User { user | page = AddTransaction { page | error = Nothing } }
+                            , post
+                                { url = "/api/transactions"
+                                , body =
+                                    Http.jsonBody <|
+                                        encodeTransaction t
+                                , expect = Http.expectString SubmitTransactionResponse
+                                }
+                            )
+
+                        Err e ->
+                            ( User { user | page = AddTransaction { page | error = Just e } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
 
@@ -382,6 +508,7 @@ view model =
                 [ div []
                     [ button [ onClick (SetPage Budget) ] [ text "Budget" ]
                     , button [ onClick (SetPage Accounts) ] [ text "Accounts" ]
+                    , button [ onClick (SetPage (AddTransaction { dateField = user.date, amountField = "", descriptionField = "", categoryIdField = "", isTransferField = False, error = Nothing })) ] [ text "Add Transaction" ]
                     ]
                 , case user.page of
                     Budget ->
@@ -415,6 +542,33 @@ view model =
                                 , input [ type_ "number", value user.categoryAvailableField, onInput ChangeCategoryAvailable ] []
                                 , input [ type_ "number", value user.categoryBudgetedField, onInput ChangeCategoryBudgeted ] []
                                 , button [ onClick AddCategory ] [ text "Add Category" ]
+                                ]
+                            ]
+
+                    AddTransaction page ->
+                        div []
+                            [ h2 [] [ text "Add Transaction" ]
+                            , label [ for "date" ] [ text "Date" ]
+                            , input [ type_ "date", id "date", value page.dateField, onInput ChangeTransactionDate ] []
+                            , label [ for "amount" ] [ text "Amount" ]
+                            , input [ type_ "number", id "amount", value page.amountField, onInput ChangeTransactionAmount ] []
+                            , label [ for "description" ] [ text "Description" ]
+                            , input [ type_ "text", id "description", value page.descriptionField, onInput ChangeTransactionDescription ] []
+                            , label [ for "category" ] [ text "Category" ]
+                            , select [ id "category", value page.categoryIdField, onInput ChangeTransactionCategoryId ]
+                                (option [ value "" ] [ text "" ]
+                                    :: List.map (\c -> option [ value <| String.fromInt c.id ] [ text c.name ]) user.categories
+                                )
+                            , label [ for "isTransfer" ] [ text "Is Transfer" ]
+                            , input [ type_ "checkbox", id "isTransfer", checked page.isTransferField, onClick ChangeTransactionIsTransfer ] []
+                            , button [ onClick SubmitTransaction ] [ text "Submit" ]
+                            , p []
+                                [ case page.error of
+                                    Just e ->
+                                        text e
+
+                                    Nothing ->
+                                        text ""
                                 ]
                             ]
 
