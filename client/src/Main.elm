@@ -57,6 +57,7 @@ type Model
 type Page
     = Budget
     | Accounts
+    | Transactions
     | AddTransaction
         { dateField : String
         , amountField : String
@@ -522,6 +523,7 @@ view model =
                     [ ul []
                         [ button [ onClick (SetPage Budget) ] [ text "Budget" ]
                         , button [ onClick (SetPage Accounts) ] [ text "Accounts" ]
+                        , button [ onClick (SetPage Transactions) ] [ text "Transactions" ]
                         , button [ onClick (SetPage (AddTransaction { dateField = user.date, amountField = "", descriptionField = "", categoryIdField = "", isTransferField = False, error = Nothing })) ] [ text "Add Transaction" ]
                         ]
                     ]
@@ -597,6 +599,13 @@ view model =
                                     Nothing ->
                                         text ""
                                 ]
+                            ]
+                    
+                    Transactions ->
+                        main_ []
+                            [ h2 [] [ text "Transactions" ]
+                            , button [ onClick GetTransactions ] [ text "Get Transactions" ]
+                            , ul [ style "max-width" "75ch" ] <| List.map viewTransaction <| List.reverse <| List.sortBy .date user.transactions
                             ]
 
                     Accounts ->
