@@ -451,6 +451,19 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ( SubmitTransactionResponse response, User user ) ->
+            case user.page of
+                AddTransaction page ->
+                    case response of
+                        Ok _ ->
+                            update GetTransactions (User { user | page = Budget })
+
+                        Err _ ->
+                            ( User { user | page = AddTransaction { page | error = Just "Server error" } }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
 
