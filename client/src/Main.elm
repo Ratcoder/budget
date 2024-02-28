@@ -527,13 +527,16 @@ view model =
                     Budget ->
                         div []
                             [ h2 [] [ text "Budget" ]
-                            , button [ onClick GetTransactions ] [ text "Get Transactions" ]
-                            , button [ onClick GetCategories ] [ text "Get Categories" ]
-                            , button [ onClick GetAccounts ] [ text "Get Accounts" ]
-                            , h2 [] [ text <| "Uncategorized: " ++ formatDollars (List.foldl (\a sum -> sum + a.balance) 0 user.accounts - List.foldl (\c sum -> sum + c.available) 0 user.categories) ]
-                            , ul [] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.filter (\t -> t.categoryId == 0 && not t.isTransfer) <| List.filter (\t -> t.date >= String.dropRight 2 user.date ++ "01") user.transactions
-                            , h2 [] [ text "Categories:" ]
+                            , p [] [ text <| "Ready to assign: " ++ formatDollars ((List.foldl (\a acc -> acc + a.balance) 0 user.accounts) - (List.foldl (\c acc -> acc + c.available) 0 user.categories)) ]
                             , ul [ class "category-list" ] <|
+                                li [ class "category" ]
+                                    [ div [ style "display" "flex", style "gap" "3ch" ]
+                                        [ div [ style "flex" "1" ] [ text "Category" ]
+                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text "Available" ]
+                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text "Budget" ]
+                                        ]
+                                    ]
+                                ::
                                 List.map
                                     (\c ->
                                         li [ class "category", preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )) ]
@@ -541,8 +544,8 @@ view model =
                                                 [ summary []
                                                     [ div [ style "display" "flex", style "gap" "3ch" ]
                                                         [ div [ style "flex" "1" ] [ text c.name ]
-                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.available / 100)), onInput (\s -> UpdateCategory c.id { c | available = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
-                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ input [ type_ "number", value (String.fromFloat (toFloat c.budgeted / 100)), onInput (\s -> UpdateCategory c.id { c | budgeted = round <| 100 * (String.toFloat s |> Maybe.withDefault 0) }) ] [] ]
+                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.available ]
+                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.budgeted ]
                                                         ]
                                                     ]
                                                 , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.sortBy .date <| List.filter (\t -> t.categoryId == c.id && t.date >= String.dropRight 2 user.date ++ "01") user.transactions
@@ -550,6 +553,15 @@ view model =
                                             ]
                                     )
                                     user.categories
+                                ++
+                                [ li [ class "category" ]
+                                    [ div [ style "display" "flex", style "gap" "3ch" ]
+                                        [ div [ style "flex" "1" ] [ text "Total" ]
+                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars (List.foldl (\c acc -> acc + c.available) 0 user.categories) ]
+                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars (List.foldl (\c acc -> acc + c.budgeted) 0 user.categories) ]
+                                        ]
+                                    ]
+                                ]
                             , div []
                                 [ input [ type_ "text", value user.categoryNameField, onInput ChangeCategoryName ] []
                                 , input [ type_ "number", value user.categoryAvailableField, onInput ChangeCategoryAvailable ] []
