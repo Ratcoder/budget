@@ -570,7 +570,7 @@ view model =
                                                                             formatDollars c.budgetAmount
 
                                                                         Percent ->
-                                                                            "Percent: " ++ String.fromInt c.budgetAmount ++ "%"
+                                                                            String.fromInt c.budgetAmount ++ "%"
                                                                 ]
                                                             ]
                                                         ]
