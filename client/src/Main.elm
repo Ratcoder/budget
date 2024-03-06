@@ -586,16 +586,32 @@ view model =
                                                 , div [ style "text-align" "right", style "width" "15ch" ]
                                                     [ text <|
                                                         formatDollars
-                                                            (List.foldl
-                                                                (\c acc ->
-                                                                    if c.budgetType == MonthySpend || c.budgetType == MonthlySave then
-                                                                        acc + c.budgetAmount
+                                                            (let
+                                                                fixedCosts =
+                                                                    List.foldl
+                                                                        (\c acc ->
+                                                                            if c.budgetType == MonthySpend || c.budgetType == MonthlySave then
+                                                                                acc + c.budgetAmount
 
-                                                                    else
-                                                                        acc
-                                                                )
-                                                                0
-                                                                user.categories
+                                                                            else
+                                                                                acc
+                                                                        )
+                                                                        0
+                                                                        user.categories
+
+                                                                percentSaved =
+                                                                    List.foldl
+                                                                        (\c acc ->
+                                                                            if c.budgetType == Percent then
+                                                                                acc + c.budgetAmount
+
+                                                                            else
+                                                                                acc
+                                                                        )
+                                                                        0
+                                                                        user.categories
+                                                             in
+                                                             Basics.ceiling (Basics.toFloat fixedCosts / (1 - Basics.toFloat percentSaved / 100))
                                                             )
                                                     ]
                                                 ]
