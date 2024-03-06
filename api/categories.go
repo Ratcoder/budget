@@ -7,10 +7,12 @@ import (
 )
 
 type Category struct {
-	Id            int    `json:"id,omitempty"`
-	Name          string `json:"name"`
-	Available     int    `json:"available"`
-	Budgeted      int    `json:"budgeted"`
+	Id            int                 `json:"id,omitempty"`
+	Name          string              `json:"name"`
+	Available     int                 `json:"available"`
+	Assigned      int                 `json:"assigned"`
+	BudgetType    database.BudgetType `json:"budget_type"`
+	BudgetAmount  int	              `json:"budget_amount"`
 }
 
 func categories(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +40,9 @@ func categories(w http.ResponseWriter, r *http.Request) {
 			Id:            category.Id,
 			Name:          category.Name,
 			Available:     category.Available,
-			Budgeted:      category.Budgeted,
+			Assigned:      category.Assigned,
+			BudgetType:    category.BudgetType,
+			BudgetAmount:  category.BudgetAmount,
 		}
 	}
 
@@ -64,7 +68,9 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
 	category := database.Category{
 		Name:          apiCategory.Name,
 		Available:     apiCategory.Available,
-		Budgeted:      apiCategory.Budgeted,
+		Assigned:      apiCategory.Assigned,
+		BudgetType:    apiCategory.BudgetType,
+		BudgetAmount:  apiCategory.BudgetAmount,
 		UserId:        userId,
 	}
 
@@ -88,7 +94,9 @@ func updateCategory(w http.ResponseWriter, r *http.Request) {
 		Id:            apiCategory.Id,
 		Name:          apiCategory.Name,
 		Available:     apiCategory.Available,
-		Budgeted:      apiCategory.Budgeted,
+		Assigned:      apiCategory.Assigned,
+		BudgetType:    apiCategory.BudgetType,
+		BudgetAmount:  apiCategory.BudgetAmount,
 		UserId:        userId,
 	}
 

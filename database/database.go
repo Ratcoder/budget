@@ -20,12 +20,22 @@ type Transaction struct {
 }
 
 type Category struct {
-	Id        int
-	Name      string
-	UserId    int
-	Available int
-	Budgeted  int
+	Id           int
+	Name         string
+	UserId       int
+	Available    int
+	Assigned     int
+	BudgetType   BudgetType
+	BudgetAmount int
 }
+
+type BudgetType int
+const (
+	None BudgetType = iota
+	MonthlySpend
+	MonthlySave
+	Percent
+)
 
 type User struct {
 	Id                      int
@@ -86,7 +96,9 @@ func Create() (Database, error) {
 		name TEXT,
 		user_id INT NOT NULL,
 		available INT,
-		budgeted INT,
+		assigned INT,
+		budget_type INT,
+		budget_amount INT,
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
 	-- DELETE FROM categories;
@@ -324,13 +336,13 @@ func (db *Database) CreateCategory(c Category) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO categories(name, user_id, available, budgeted) VALUES(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO categories(name, user_id, available, assigned, budget_type, budget_amount) VALUES(?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(c.Name, c.UserId, c.Available, c.Budgeted)
+	_, err = stmt.Exec(c.Name, c.UserId, c.Available, c.Assigned, c.BudgetType, c.BudgetAmount)
 	if err != nil {
 		return err
 	}
@@ -339,7 +351,7 @@ func (db *Database) CreateCategory(c Category) error {
 }
 
 func (db *Database) GetCategories(user int) ([]Category, error) {
-	rows, err := db.driver.Query("SELECT * FROM categories WHERE user_id = (?);", user)
+	rows, err := db.driver.Query("SELECT id, name, user_id, available, assigned, budget_type, budget_amount FROM categories WHERE user_id = (?);", user)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +361,7 @@ func (db *Database) GetCategories(user int) ([]Category, error) {
 
 	for rows.Next() {
 		var c Category
-		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.Available, &c.Budgeted)
+		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.Available, &c.Assigned, &c.BudgetType, &c.BudgetAmount)
 		if err != nil {
 			return nil, err
 		} else {
@@ -366,13 +378,13 @@ func (db *Database) UpdateCategory(userId int, c Category) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE categories SET name = (?), available = (?), budgeted = (?) WHERE user_id = (?) AND id = (?);")
+	stmt, err := tx.Prepare("UPDATE categories SET name = (?), available = (?), assigned = (?), budget_type = (?), budget_amount = (?) WHERE user_id = (?) AND id = (?);")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(c.Name, c.Available, c.Budgeted, userId, c.Id)
+	_, err = stmt.Exec(c.Name, c.Available, c.Assigned, c.BudgetType, c.BudgetAmount, userId, c.Id)
 	if err != nil {
 		return err
 	}

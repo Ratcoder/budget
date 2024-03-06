@@ -89,8 +89,17 @@ type alias Category =
     { id : Int
     , name : String
     , available : Int
-    , budgeted : Int
+    , assigned : Int
+    , budgetType : BudgetType
+    , budgetAmount : Int
     }
+
+
+type BudgetType
+    = None
+    | MonthySpend
+    | MonthlySave
+    | Percent
 
 
 type Response success failure
@@ -531,7 +540,7 @@ view model =
                     Budget ->
                         main_ []
                             [ h2 [] [ text "Budget" ]
-                            , p [] [ text <| "Ready to assign: " ++ formatDollars ((List.foldl (\a acc -> acc + a.balance) 0 user.accounts) - (List.foldl (\c acc -> acc + c.available) 0 user.categories)) ]
+                            , p [] [ text <| "Ready to assign: " ++ formatDollars (List.foldl (\a acc -> acc + a.balance) 0 user.accounts - List.foldl (\c acc -> acc + c.available) 0 user.categories) ]
                             , ul [ class "category-list" ] <|
                                 li [ class "category" ]
                                     [ div [ style "display" "flex", style "gap" "3ch" ]
@@ -540,32 +549,58 @@ view model =
                                         , div [ style "text-align" "right", style "width" "15ch" ] [ text "Budget" ]
                                         ]
                                     ]
-                                ::
-                                List.map
-                                    (\c ->
-                                        li [ class "category", preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )) ]
-                                            [ details []
-                                                [ summary []
-                                                    [ div [ style "display" "flex", style "gap" "3ch" ]
-                                                        [ div [ style "flex" "1" ] [ text c.name ]
-                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.available ]
-                                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.budgeted ]
+                                    :: List.map
+                                        (\c ->
+                                            li [ class "category", preventDefaultOn "drop" (Json.Decode.succeed ( DropTransaction c.id, True )), preventDefaultOn "dragover" (Json.Decode.succeed ( NoOp, True )) ]
+                                                [ details []
+                                                    [ summary []
+                                                        [ div [ style "display" "flex", style "gap" "3ch" ]
+                                                            [ div [ style "flex" "1" ] [ text c.name ]
+                                                            , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars c.available ]
+                                                            , div [ style "text-align" "right", style "width" "15ch" ]
+                                                                [ text <|
+                                                                    case c.budgetType of
+                                                                        None ->
+                                                                            ""
+
+                                                                        MonthySpend ->
+                                                                            formatDollars c.budgetAmount
+
+                                                                        MonthlySave ->
+                                                                            formatDollars c.budgetAmount
+
+                                                                        Percent ->
+                                                                            "Percent: " ++ String.fromInt c.budgetAmount ++ "%"
+                                                                ]
+                                                            ]
                                                         ]
+                                                    , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.sortBy .date <| List.filter (\t -> t.categoryId == c.id && t.date >= String.dropRight 2 user.date ++ "01") user.transactions
                                                     ]
-                                                , ul [ class "category-transaction-list" ] <| List.map (\t -> li [] [ viewTransaction t ]) <| List.sortBy .date <| List.filter (\t -> t.categoryId == c.id && t.date >= String.dropRight 2 user.date ++ "01") user.transactions
+                                                ]
+                                        )
+                                        user.categories
+                                    ++ [ li [ class "category" ]
+                                            [ div [ style "display" "flex", style "gap" "3ch" ]
+                                                [ div [ style "flex" "1" ] [ text "Total" ]
+                                                , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars (List.foldl (\c acc -> acc + c.available) 0 user.categories) ]
+                                                , div [ style "text-align" "right", style "width" "15ch" ]
+                                                    [ text <|
+                                                        formatDollars
+                                                            (List.foldl
+                                                                (\c acc ->
+                                                                    if c.budgetType == MonthySpend || c.budgetType == MonthlySave then
+                                                                        acc + c.budgetAmount
+
+                                                                    else
+                                                                        acc
+                                                                )
+                                                                0
+                                                                user.categories
+                                                            )
+                                                    ]
                                                 ]
                                             ]
-                                    )
-                                    user.categories
-                                ++
-                                [ li [ class "category" ]
-                                    [ div [ style "display" "flex", style "gap" "3ch" ]
-                                        [ div [ style "flex" "1" ] [ text "Total" ]
-                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars (List.foldl (\c acc -> acc + c.available) 0 user.categories) ]
-                                        , div [ style "text-align" "right", style "width" "15ch" ] [ text <| formatDollars (List.foldl (\c acc -> acc + c.budgeted) 0 user.categories) ]
-                                        ]
-                                    ]
-                                ]
+                                       ]
                             , div []
                                 [ input [ type_ "text", value user.categoryNameField, onInput ChangeCategoryName ] []
                                 , input [ type_ "number", value user.categoryAvailableField, onInput ChangeCategoryAvailable ] []
@@ -600,7 +635,7 @@ view model =
                                         text ""
                                 ]
                             ]
-                    
+
                     Transactions ->
                         main_ []
                             [ h2 [] [ text "Transactions" ]
@@ -768,11 +803,32 @@ encodeTransaction transaction =
 
 categoryDecoder : Json.Decode.Decoder Category
 categoryDecoder =
-    Json.Decode.map4 Category
+    Json.Decode.map6 Category
         (Json.Decode.field "id" Json.Decode.int)
         (Json.Decode.field "name" Json.Decode.string)
         (Json.Decode.field "available" Json.Decode.int)
-        (Json.Decode.field "budgeted" Json.Decode.int)
+        (Json.Decode.field "assigned" Json.Decode.int)
+        (Json.Decode.field "budget_type" Json.Decode.int
+            |> Json.Decode.andThen
+                (\t ->
+                    case t of
+                        0 ->
+                            Json.Decode.succeed None
+
+                        1 ->
+                            Json.Decode.succeed MonthySpend
+
+                        2 ->
+                            Json.Decode.succeed MonthlySave
+
+                        3 ->
+                            Json.Decode.succeed Percent
+
+                        _ ->
+                            Json.Decode.fail "Invalid budget type"
+                )
+        )
+        (Json.Decode.field "budget_amount" Json.Decode.int)
 
 
 encodeCategory : Category -> Json.Encode.Value
@@ -781,7 +837,23 @@ encodeCategory category =
         [ ( "id", Json.Encode.int category.id )
         , ( "name", Json.Encode.string category.name )
         , ( "available", Json.Encode.int category.available )
-        , ( "budgeted", Json.Encode.int category.budgeted )
+        , ( "assigned", Json.Encode.int category.assigned )
+        , ( "budget_type"
+          , Json.Encode.int
+                (case category.budgetType of
+                    None ->
+                        0
+
+                    MonthySpend ->
+                        1
+
+                    MonthlySave ->
+                        2
+
+                    Percent ->
+                        3
+                )
+          )
         ]
 
 
