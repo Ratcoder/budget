@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"os"
@@ -12,7 +10,6 @@ import (
 	"strings"
 
 	"budget/database"
-	plaid "budget/plaid_connection"
 	"budget/api"
 
 	"github.com/joho/godotenv"
@@ -40,41 +37,10 @@ func main() {
 	}
 	defer db.Close()
 
-	user, err := db.GetUserByName("test")
-	if err != nil {
-		log.Fatal("Error getting user:", err)
-	}
-	go plaid.SyncItems(user.Id, &db)
-
 	PORT, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("Error parsing PORT env variable:", err)
 	}
 	fmt.Println("Running at port", PORT)
-	log.Fatal(api.Start(PORT, &db))
-}
-
-func transactionsFromCSV(r io.Reader) ([]database.Transaction, error) {
-	var transactions []database.Transaction
-	csvReader := csv.NewReader(r)
-	// Skip header
-	csvReader.Read()
-	for {
-		record, err := csvReader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return transactions, err
-		}
-
-		amount, err := DollarStringToCents(record[2])
-		if err != nil {
-			return transactions, err
-		}
-
-		transactions = append(transactions, database.Transaction{Date: record[0], Description: record[1], Amount: amount})
-	}
-
-	return transactions, nil
+	log.Fatal(api.Start(PORT, db))
 }

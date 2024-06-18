@@ -77,19 +77,21 @@ func createSession(userId int) (string, error) {
 
 func loginUser(username string, password string) (string, error) {
 	// Get user from database
-	dbUser, err := (*db).GetUserByName(username)
+	var userId int
+	var hashedPassword string
+	err := db.QueryRow("SELECT user_id, password FROM users WHERE name = ?", username).Scan(&userId, &hashedPassword)
 	if err != nil {
 		return "", err
 	}
 
 	// Compare passwords
-	err = bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
 		return "", err
 	}
 
 	// Create session
-	sessionString, err := createSession(dbUser.Id)
+	sessionString, err := createSession(userId)
 	if err != nil {
 		return "", err
 	}

@@ -1,17 +1,14 @@
 package api
 
 import (
-	// "fmt"
-	"budget/database"
+	"database/sql"
 	"net/http"
 	"strconv"
-
-	// "strings"
 )
 
-var db *database.Database
+var db *sql.DB
 
-func Start(port int, databasee *database.Database) error {
+func Start(port int, databasee *sql.DB) error {
 	db = databasee
 
 	mux := http.NewServeMux()
@@ -23,17 +20,6 @@ func Start(port int, databasee *database.Database) error {
 	mux.Handle("/api/accounts", authMiddleware(http.HandlerFunc(accounts)))
 	mux.HandleFunc("/api/register", register)
 	mux.HandleFunc("/api/login", login)
-	mux.Handle("/api/get_link_token", authMiddleware(http.HandlerFunc(get_link_token)))
-	mux.Handle("/api/set_public_token", authMiddleware(http.HandlerFunc(set_public_token)))
 
 	return http.ListenAndServe(":"+strconv.Itoa(port), mux)
 }
-
-// func cors(fs http.Handler) http.HandlerFunc {
-//     return func(w http.ResponseWriter, r *http.Request) {
-//         // do your cors stuff
-//         // return if you do not want the FileServer handle a specific request
-
-//         fs.ServeHTTP(w, r)
-//     }
-// }

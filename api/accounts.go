@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 	"encoding/json"
-	"budget/database"
 )
 
 type Account struct {
@@ -27,22 +26,33 @@ func accounts(w http.ResponseWriter, r *http.Request) {
 
 func getAccounts(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
-	accounts, err := (*db).GetAccounts(userId)
+
+	rows, err := db.Query("SELECT account_id, name FROM accounts WHERE user_id = ?", userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer rows.Close()
 
-	var apiAccounts []Account = make([]Account, len(accounts))
-	for i, account := range accounts {
-		apiAccounts[i] = Account{
-			Id:            account.Id,
-			Name:          account.Name,
-			Balance:       account.Balance,
+	accounts := make([]Account, 0)
+	for rows.Next() {
+		var account Account
+		err = rows.Scan(&account.Id, &account.Name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+
+		err := db.QueryRow("SELECT SUM(amount) FROM transactions WHERE account_id = ?", account.Id).Scan(&account.Balance)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		accounts = append(accounts, account)
 	}
 
-	jsonAccounts, err := json.Marshal(apiAccounts)
+	jsonAccounts, err := json.Marshal(accounts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -54,20 +64,20 @@ func getAccounts(w http.ResponseWriter, r *http.Request) {
 
 func createAccount(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
-	var apiAccount Account
-	err := json.NewDecoder(r.Body).Decode(&apiAccount)
+	var account Account
+	err := json.NewDecoder(r.Body).Decode(&account)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	account := database.Account{
-		Name:    apiAccount.Name,
-		Balance: apiAccount.Balance,
-		UserId:  userId,
+	stmt, err := db.Prepare("INSERT INTO accounts (user_id, name) VALUES (?, ?)")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	err = (*db).CreateAccount(account)
+	_, err = stmt.Exec(userId, account.Name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -76,21 +86,20 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 
 func updateAccount(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
-	var apiAccount Account
-	err := json.NewDecoder(r.Body).Decode(&apiAccount)
+	var account Account
+	err := json.NewDecoder(r.Body).Decode(&account)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	account := database.Account{
-		Id:      apiAccount.Id,
-		Name:    apiAccount.Name,
-		Balance: apiAccount.Balance,
-		UserId:  userId,
+	stmt, err := db.Prepare("UPDATE accounts SET name = ? WHERE user_id = ? AND account_id = ?")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	err = (*db).UpdateAccount(userId, account)
+	_, err = stmt.Exec(account.Name, userId, account.Id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

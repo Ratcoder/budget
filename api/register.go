@@ -1,10 +1,10 @@
 package api
 
 import (
-	"budget/database"
 	"encoding/json"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
+	"database/sql"
 )
 
 type RegisterRequest struct {
@@ -32,9 +32,9 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user exists
-	_, err = (*db).GetUserByName(req.Username)
-	if err == nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	err = db.QueryRow("SELECT * FROM users WHERE name = ?", req.Username).Scan()
+	if err != sql.ErrNoRows {
+		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(RegisterResponse{Message: "User already exists"})
 		return
 	}
@@ -49,11 +49,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 	password := string(hashedPassword)
 
 	// Create user
-	user := database.User{
-		Name:     req.Username,
-		Password: password,
+	stmt, err := db.Prepare("INSERT INTO users(name, password) VALUES(?, ?)")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(RegisterResponse{Message: "Failed to create user"})
+		return
 	}
-	err = (*db).CreateUser(user)
+	_, err = stmt.Exec(req.Username, password)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(RegisterResponse{Message: "Failed to create user"})

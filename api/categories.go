@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 	"encoding/json"
-	"budget/database"
 )
 
 type Category struct {
@@ -11,8 +10,8 @@ type Category struct {
 	Name          string              `json:"name"`
 	Available     int                 `json:"available"`
 	Assigned      int                 `json:"assigned"`
-	BudgetType    database.BudgetType `json:"budget_type"`
-	BudgetAmount  int	              `json:"budget_amount"`
+	// BudgetType    database.BudgetType `json:"budget_type"`
+	// BudgetAmount  int	              `json:"budget_amount"`
 }
 
 func categories(w http.ResponseWriter, r *http.Request) {
@@ -28,25 +27,38 @@ func categories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userId := r.Context().Value("user").(int)
-	categories, err := (*db).GetCategories(userId)
+	rows, err := db.Query("SELECT category_id, name FROM categories WHERE user_id = ?", userId)
+	defer rows.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	var apiCategories []Category = make([]Category, len(categories))
-	for i, category := range categories {
-		apiCategories[i] = Category{
-			Id:            category.Id,
-			Name:          category.Name,
-			Available:     category.Available,
-			Assigned:      category.Assigned,
-			BudgetType:    category.BudgetType,
-			BudgetAmount:  category.BudgetAmount,
+	categories := make([]Category, 0)
+	for rows.Next() {
+		var category Category
+		err := rows.Scan(&category.Id, &category.Name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+
+		var transactionsAmount int
+		var assignAmount int
+		err = db.QueryRow("SELECT SUM(amount) FROM transactions WHERE category_id = ?", category.Id).Scan(&transactionsAmount)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = db.QueryRow("SELECT SUM(amount) FROM assign WHERE category_id = ?", category.Id).Scan(&assignAmount)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		category.Available = assignAmount + transactionsAmount
 	}
 
-	jsonCategories, err := json.Marshal(apiCategories)
+	jsonCategories, err := json.Marshal(categories)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -58,23 +70,19 @@ func categories(w http.ResponseWriter, r *http.Request) {
 
 func createCategory(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
-	var apiCategory Category
-	err := json.NewDecoder(r.Body).Decode(&apiCategory)
+	var category Category
+	err := json.NewDecoder(r.Body).Decode(&category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	category := database.Category{
-		Name:          apiCategory.Name,
-		Available:     apiCategory.Available,
-		Assigned:      apiCategory.Assigned,
-		BudgetType:    apiCategory.BudgetType,
-		BudgetAmount:  apiCategory.BudgetAmount,
-		UserId:        userId,
+	stmt, err := db.Prepare("INSERT INTO categories (name, user_id) VALUES (?, ?)")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	err = (*db).CreateCategory(category)
+	_, err = stmt.Exec(category.Name, userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -83,24 +91,19 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
 
 func updateCategory(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("user").(int)
-	var apiCategory Category
-	err := json.NewDecoder(r.Body).Decode(&apiCategory)
+	var category Category
+	err := json.NewDecoder(r.Body).Decode(&category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	category := database.Category{
-		Id:            apiCategory.Id,
-		Name:          apiCategory.Name,
-		Available:     apiCategory.Available,
-		Assigned:      apiCategory.Assigned,
-		BudgetType:    apiCategory.BudgetType,
-		BudgetAmount:  apiCategory.BudgetAmount,
-		UserId:        userId,
+	stmt, err := db.Prepare("UPDATE categories SET name = ? WHERE user_id = ? AND category_id = ?")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	err = (*db).UpdateCategory(userId, category)
+	_, err = stmt.Exec(category.Name, userId, category.Id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

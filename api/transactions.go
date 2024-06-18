@@ -1,7 +1,6 @@
 package api
 
 import (
-	"budget/database"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,12 +8,14 @@ import (
 
 type Transaction struct {
 	Id            int    `json:"id,omitempty"`
-	Date          string `json:"date"`
+	Year          int    `json:"year"`
+	Month         int    `json:"month"`
+	Day           int    `json:"day"`
 	Description   string `json:"description"`
 	Amount        int    `json:"amount"`
 	AccountId     int    `json:"account_id"`
 	CategoryId    int    `json:"category_id"`
-	IsTransfer    bool   `json:"is_transfer"`
+	// IsTransfer    bool   `json:"is_transfer"`
 }
 
 func transactions(w http.ResponseWriter, r *http.Request) {
@@ -22,29 +23,24 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		// Get all transactions
-		transactions, err := (*db).GetTransactions(userId)
+		rows, err := db.Query("SELECT transaction_id, year, month, day, description, amount, transactions.account_id, category_id FROM transactions JOIN accounts ON accounts.account_id = transactions.account_id WHERE user_id = ?", userId)
 		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		// Convert to api transactions
-		var apiTransactions []Transaction = make([]Transaction, len(transactions))
-		for i, transaction := range transactions {
-			apiTransaction := Transaction{
-				Id:            transaction.Id,
-				Date:          transaction.Date,
-				Description:   transaction.Description,
-				Amount:        transaction.Amount,
-				AccountId:     transaction.AccountId,
-				CategoryId:    transaction.CategoryId,
-				IsTransfer:    transaction.IsTransfer,
+		transactions := make([]Transaction, 0)
+		for rows.Next() {
+			var transaction Transaction
+			err := rows.Scan(&transaction.Id, &transaction.Year, &transaction.Month, &transaction.Day, &transaction.Description, &transaction.Amount, &transaction.AccountId, &transaction.CategoryId)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			apiTransactions[i] = apiTransaction
+			transactions = append(transactions, transaction)
 		}
 
 		// Convert to JSON
-		jsonTransactions, err := json.Marshal(apiTransactions)
+		jsonTransactions, err := json.Marshal(transactions)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
@@ -55,29 +51,24 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 		w.Write(jsonTransactions)
 	case "POST":
 		// Create a new transaction
-		var apiTransaction Transaction
-		err := json.NewDecoder(r.Body).Decode(&apiTransaction)
+		var transaction Transaction
+		err := json.NewDecoder(r.Body).Decode(&transaction)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		transaction := database.Transaction{
-			Date: apiTransaction.Date,
-			Description: apiTransaction.Description,
-			Amount: apiTransaction.Amount,
-			AccountId: apiTransaction.AccountId,
-			CategoryId: apiTransaction.CategoryId,
-			IsTransfer: apiTransaction.IsTransfer,
-			UserId: userId,
-		}
-
-		err = (*db).CreateTransaction(transaction)
+		stmt, err := db.Prepare("INSERT INTO transactions(year, month, day, description, amount, account_id, category_id, user_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+		_, err = stmt.Exec(transaction.Year, transaction.Month, transaction.Day, transaction.Description, transaction.Amount, transaction.AccountId, transaction.CategoryId, userId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
 		// Write response
 		w.WriteHeader(http.StatusCreated)
 	case "PATCH":
@@ -89,30 +80,23 @@ func transactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Convert to Api Transaction
-		var apiTransaction Transaction
-		err = json.Unmarshal(body, &apiTransaction)
+		// Parse body
+		var transaction Transaction
+		err = json.Unmarshal(body, &transaction)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
-		// Convert to database Transaction
-		transaction := database.Transaction{
-			Id:            apiTransaction.Id,
-			Date:          apiTransaction.Date,
-			Description:   apiTransaction.Description,
-			Amount:        apiTransaction.Amount,
-			AccountId:     apiTransaction.AccountId,
-			CategoryId:    apiTransaction.CategoryId,
-			IsTransfer:    apiTransaction.IsTransfer,
-			UserId:        userId,
-		}
-
 		// Update transaction
-		err = (*db).UpdateTransaction(userId, transaction)
+		stmt, err := db.Prepare("UPDATE transactions SET year = ?, month = ?, day = ?, description = ?, amount = ?, account_id = ?, category_id = ? WHERE transaction_id = ?")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		_, err = stmt.Exec(transaction.Year, transaction.Month, transaction.Day, transaction.Description, transaction.Amount, transaction.AccountId, transaction.CategoryId, transaction.Id)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
