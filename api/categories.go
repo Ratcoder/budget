@@ -28,11 +28,11 @@ func categories(w http.ResponseWriter, r *http.Request) {
 
 	userId := r.Context().Value("user").(int)
 	rows, err := db.Query("SELECT category_id, name FROM categories WHERE user_id = ?", userId)
-	defer rows.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer rows.Close()
 	categories := make([]Category, 0)
 	for rows.Next() {
 		var category Category
