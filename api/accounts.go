@@ -43,11 +43,28 @@ func getAccounts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := db.QueryRow("SELECT SUM(amount) FROM transactions WHERE account_id = ?", account.Id).Scan(&account.Balance)
+		var transactionSum int
+		err := db.QueryRow("SELECT SUM(amount) FROM transactions WHERE account_id = ?", account.Id).Scan(&transactionSum)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		var transferedIn int
+		err = db.QueryRow("SELECT SUM(amount) FROM transfer WHERE to_account_id = ?", account.Id).Scan(&transferedIn)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var transferedOut int
+		err = db.QueryRow("SELECT SUM(amount) FROM transactions WHERE from_account_id = ?", account.Id).Scan(&transferedOut)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		account.Balance = transactionSum + transferedIn - transferedOut
 
 		accounts = append(accounts, account)
 	}
