@@ -26,6 +26,18 @@ func Create() (*sql.DB, error) {
 		FOREIGN KEY(account_id) REFERENCES accounts(account_id)
 	);
 
+	CREATE TABLE IF NOT EXISTS transfers (
+		transfer_id INTEGER PRIMARY KEY,
+		year INTEGER NOT NULL,
+		month INTEGER NOT NULL,
+		day INTEGER NOT NULL
+		amount INTEGER NOT NULL,
+		from_account_id INTEGER NOT NULL,
+		to_account_id INTEGER NOT NULL,
+		FOREIGN KEY(from_account_id) REFERENCES accounts(account_id),
+		FOREIGN KEY(to_account_id) REFERENCES accounts(account_id)
+	);
+
 	CREATE TABLE IF NOT EXISTS category_folders (
 		category_folder_id INTEGER PRIMARY KEY,
 		name TEXT NOT NULL,
